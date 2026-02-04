@@ -5,6 +5,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../../lib/supabase";
 import { generateInviteCode } from "../../lib/inviteCode";
 import { registerForPushAndSubscribeToPair } from "../../lib/push";
+import { getCatCopy } from "@/lib/catCopy";
+import { sendPushToPairExceptDevice } from "@/lib/push";
 
 type NudgeRow = {
   id: string;
@@ -12,6 +14,7 @@ type NudgeRow = {
   status: "pending" | "done";
   escalation_level: number;
   created_at: string;
+  sender_device: string | null;
 };
 
 const CAT_LINES = [
@@ -23,6 +26,7 @@ const CAT_LINES = [
 ];
 
 const PAIR_KEY = "nagcat_pair_id";
+const DEVICE_KEY = "nagcat_device_name";
 
 export default function HomeScreen() {
   const [pairId, setPairId] = useState("");
@@ -31,6 +35,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(false);
   const [inviteInput, setInviteInput] = useState("");
   const [pairLoading, setPairLoading] = useState(false);
+  const [deviceName, setDeviceName] = useState("");
 
   // load saved pairId
   useEffect(() => {
@@ -48,6 +53,13 @@ export default function HomeScreen() {
     })();
   }, [pairId]);
 
+  useEffect(() => {
+    (async () => {
+      const saved = await AsyncStorage.getItem(DEVICE_KEY);
+      if (saved) setDeviceName(saved);
+    })();
+  }, []);
+
   async function load() {
     if (loading) return;
 
@@ -57,7 +69,7 @@ export default function HomeScreen() {
     setLoading(true);
     const { data, error } = await supabase
       .from("nudges")
-      .select("id,title,status,escalation_level,created_at")
+      .select("id,title,status,escalation_level,created_at,sender_device")
       .eq("pair_id", p)
       .order("created_at", { ascending: false });
 
@@ -113,6 +125,7 @@ export default function HomeScreen() {
       title: t,
       status: "pending",
       escalation_level: 0,
+      sender_device: deviceName || "Unknown device",
     });
 
     if (error) return Alert.alert("Create error", error.message);
@@ -131,17 +144,42 @@ export default function HomeScreen() {
     load();
   }
 
-  async function escalate(id: string, currentLevel: number) {
-    const next = Math.min(currentLevel + 1, CAT_LINES.length - 1);
+async function escalate(id: string, currentLevel: number) {
+  const p = pairId.trim();
+  if (!p) return;
 
-    const { error } = await supabase
-      .from("nudges")
-      .update({ escalation_level: next })
-      .eq("id", id);
+  const next = Math.min(currentLevel + 1, 10);
 
-    if (error) return Alert.alert("Escalate error", error.message);
-    load();
-  }
+  const row = nudges.find((n) => n.id === id);
+  if (!row) return;
+
+  // Only sender can escalate
+  if (!deviceName || row.sender_device !== deviceName) return;
+
+  const { error } = await supabase
+    .from("nudges")
+    .update({ escalation_level: next })
+    .eq("id", id);
+
+  if (error) return Alert.alert("Escalate error", error.message);
+
+  // Build push copy for User B
+  const fakeTask: any = { title: row.title, escalation: { level: next } };
+  const payload = getCatCopy(fakeTask, "manual_escalate", {
+    actor: "sender",
+    level: next,
+  });
+
+  // Push to everyone else in the pair
+  await sendPushToPairExceptDevice({
+    pairId: p,
+    exceptDeviceLabel: deviceName, // (Nicole phone / Partner phone)
+    title: `${payload.emoji} ${payload.title}`,
+    body: payload.body,
+  });
+
+  load();
+}
 
   async function createPair() {
   setPairLoading(true);
@@ -159,6 +197,8 @@ export default function HomeScreen() {
     if (!error && data) {
       const newPairId = data.id as string;
       setPairId(newPairId);
+      await AsyncStorage.setItem(DEVICE_KEY, "Nicole phone");
+      setDeviceName("Nicole phone");
       // SAFE: won’t crash in Expo Go; just returns ok:false
       registerForPushAndSubscribeToPair(newPairId, "Nicole phone").then(() => {});
       setPairLoading(false);
@@ -201,6 +241,8 @@ async function joinPair() {
   }
 
   setPairId(data.id as string);
+  await AsyncStorage.setItem(DEVICE_KEY, "Partner phone");
+  setDeviceName("Partner phone");
   registerForPushAndSubscribeToPair(data.id as string, "Partner phone").then(() => {});
   setInviteInput("");
   setPairLoading(false);
@@ -293,8 +335,28 @@ async function joinPair() {
           contentContainerStyle={{ paddingBottom: 24 }}
           ListEmptyComponent={<Text style={{ opacity: 0.7 }}>No nudges yet.</Text>}
           renderItem={({ item }) => {
-            const line = CAT_LINES[Math.min(item.escalation_level, CAT_LINES.length - 1)];
+           const fakeTask: any = {
+              title: item.title,
+              escalation: { level: item.escalation_level },
+            };
+
+            const event =
+              item.status === "done"
+                ? "done"
+                : item.escalation_level > 0
+                  ? "manual_escalate"
+                  : "created";
+
+            const actor = item.escalation_level > 0 ? "sender" : "system";
+
+            const copy = getCatCopy(fakeTask, event as any, {
+              actor: actor as any,
+              level: item.escalation_level,
+            });
+
+            const line = `${copy.emoji} ${copy.body}`;
             const isDone = item.status === "done";
+            const isSender = !!deviceName && item.sender_device === deviceName;
 
             return (
               <View
@@ -314,19 +376,22 @@ async function joinPair() {
 
                 {!isDone && (
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
-                    <Pressable
-                      onPress={() => markDone(item.id)}
-                      style={{ flex: 1, padding: 10, borderWidth: 1, borderRadius: 10, borderColor: "#ddd" }}
-                    >
-                      <Text style={{ textAlign: "center" }}>Done</Text>
-                    </Pressable>
+                  <Pressable
+                    onPress={() => markDone(item.id)}
+                    style={{ flex: 1, padding: 10, borderWidth: 1, borderRadius: 10, borderColor: "#ddd" }}
+                  >
+                    <Text style={{ textAlign: "center" }}>Done</Text>
+                  </Pressable>
+
+                  {isSender && (
                     <Pressable
                       onPress={() => escalate(item.id, item.escalation_level)}
                       style={{ flex: 1, padding: 10, borderWidth: 1, borderRadius: 10, borderColor: "#ddd" }}
                     >
                       <Text style={{ textAlign: "center" }}>Escalate 😼</Text>
                     </Pressable>
-                  </View>
+                  )}
+                </View>
                 )}
               </View>
             );

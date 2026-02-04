@@ -91,3 +91,79 @@ export async function registerForPushAndSubscribeToPair(
 
   return { ok: true, token };
 }
+
+type SendPushResult =
+  | { ok: true; sent: number }
+  | { ok: false; reason: string };
+
+/**
+ * SAFE no-op push sender:
+ * - Works even if you don't have tokens yet
+ * - Works in Expo Go (returns ok:false)
+ * - Works if push_subscriptions table is missing (returns ok:false)
+ * - Works if there are no other devices registered (returns ok:false)
+ */
+export async function sendPushToPairExceptDevice(input: {
+  pairId: string;
+  exceptDeviceLabel: string; // the current device name/label
+  title: string;
+  body: string;
+}): Promise<SendPushResult> {
+  const p = input.pairId.trim();
+  if (!p) return { ok: false, reason: "Missing pairId" };
+
+  // Push not available in Expo Go or on web / simulator — do nothing safely.
+  if (Platform.OS === "web") return { ok: false, reason: "Web push disabled" };
+  if (!Device.isDevice) return { ok: false, reason: "Push requires a physical device" };
+  if (isExpoGo()) return { ok: false, reason: "Expo Go (push disabled)" };
+
+  // Load tokens for this pair (if none, do nothing)
+  // Uses YOUR existing table name: push_subscriptions
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("expo_push_token, device_label")
+    .eq("pair_id", p);
+
+  if (error) {
+    // If table doesn't exist yet or RLS blocks it, don't crash — just no-op
+    return { ok: false, reason: `Token lookup failed: ${error.message}` };
+  }
+
+  const targets =
+    (data ?? [])
+      .filter((row: any) => row.device_label !== input.exceptDeviceLabel)
+      .map((row: any) => row.expo_push_token)
+      .filter(Boolean);
+
+  if (!targets.length) {
+    return { ok: false, reason: "No target devices registered yet" };
+  }
+
+  // Expo push API (prototype-friendly)
+  try {
+    const res = await fetch("https://exp.host/--/api/v2/push/send", {
+      method: "POST",
+      headers: {
+        Accept: "application/json",
+        "Accept-Encoding": "gzip, deflate",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(
+        targets.map((to: string) => ({
+          to,
+          title: input.title,
+          body: input.body,
+          sound: "default",
+        }))
+      ),
+    });
+
+    if (!res.ok) {
+      return { ok: false, reason: `Expo push send failed: HTTP ${res.status}` };
+    }
+
+    return { ok: true, sent: targets.length };
+  } catch (e: any) {
+    return { ok: false, reason: `Expo push send error: ${String(e?.message ?? e)}` };
+  }
+}
