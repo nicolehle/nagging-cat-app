@@ -7,6 +7,10 @@ import { generateInviteCode } from "../../lib/inviteCode";
 import { registerForPushAndSubscribeToPair } from "../../lib/push";
 import { getCatCopy } from "@/lib/catCopy";
 import { sendPushToPairExceptDevice } from "@/lib/push";
+import { computeExpiresAt, computeNextEscalateAt } from "@/lib/nudgePolicy";
+import { tickNudgesForPair } from "@/lib/nudgeTick";
+import { hapticLight, hapticMedium } from "@/lib/feedback";
+import { NudgeCard } from "@/components/NudgeCard";
 
 type NudgeRow = {
   id: string;
@@ -15,6 +19,8 @@ type NudgeRow = {
   escalation_level: number;
   created_at: string;
   sender_device: string | null;
+  last_event: string | null;
+  last_event_at: string | null;
 };
 
 const CAT_LINES = [
@@ -60,6 +66,21 @@ export default function HomeScreen() {
     })();
   }, []);
 
+  useEffect(() => {
+    const p = pairId.trim();
+    if (!p) return;
+
+    // Run immediately on pair connect
+    tickNudgesForPair(p).then(() => {});
+
+    // Then every 30 seconds while screen is mounted
+    const id = setInterval(() => {
+      tickNudgesForPair(p).then(() => {});
+    }, 30_000);
+
+    return () => clearInterval(id);
+  }, [pairId]);
+
   async function load() {
     if (loading) return;
 
@@ -69,7 +90,7 @@ export default function HomeScreen() {
     setLoading(true);
     const { data, error } = await supabase
       .from("nudges")
-      .select("id,title,status,escalation_level,created_at,sender_device")
+      .select("id,title,status,escalation_level,created_at,sender_device,last_event,last_event_at")
       .eq("pair_id", p)
       .order("created_at", { ascending: false });
 
@@ -119,6 +140,9 @@ export default function HomeScreen() {
     const t = title.trim();
     if (!p) return Alert.alert("Pair ID missing", "Paste a pair_id first.");
     if (!t) return;
+    const now = new Date();
+    const expiresAt = computeExpiresAt(now);
+    const nextEscAt = computeNextEscalateAt(now, 0); // first escalation
 
     const { error } = await supabase.from("nudges").insert({
       pair_id: p,
@@ -126,6 +150,10 @@ export default function HomeScreen() {
       status: "pending",
       escalation_level: 0,
       sender_device: deviceName || "Unknown device",
+      last_event: "created",
+      last_event_at: new Date().toISOString(),
+      expires_at: expiresAt.toISOString(),
+      next_escalate_at: nextEscAt ? nextEscAt.toISOString() : null,
     });
 
     if (error) return Alert.alert("Create error", error.message);
@@ -135,9 +163,16 @@ export default function HomeScreen() {
   }
 
   async function markDone(id: string) {
+    hapticLight(); // fire-and-forget feel
+
     const { error } = await supabase
       .from("nudges")
-      .update({ status: "done", done_at: new Date().toISOString() })
+      .update({
+         status: "done", 
+         done_at: new Date().toISOString(),
+         last_event: "done",
+         last_event_at: new Date().toISOString(), 
+        })
       .eq("id", id);
 
     if (error) return Alert.alert("Update error", error.message);
@@ -145,35 +180,48 @@ export default function HomeScreen() {
   }
 
 async function escalate(id: string, currentLevel: number) {
+  hapticMedium();
+
   const p = pairId.trim();
   if (!p) return;
-
-  const next = Math.min(currentLevel + 1, 10);
 
   const row = nudges.find((n) => n.id === id);
   if (!row) return;
 
-  // Only sender can escalate
+  // Sender-only rule
   if (!deviceName || row.sender_device !== deviceName) return;
+
+  const next = Math.min(currentLevel + 1, 10);
+  const nowIso = new Date().toISOString();
 
   const { error } = await supabase
     .from("nudges")
-    .update({ escalation_level: next })
+    .update({
+      escalation_level: next,
+      last_event: "manual_escalate",
+      last_event_at: nowIso,
+    })
     .eq("id", id);
 
-  if (error) return Alert.alert("Escalate error", error.message);
+  if (error) {
+    Alert.alert("Escalate error", error.message);
+    return;
+  }
 
-  // Build push copy for User B
-  const fakeTask: any = { title: row.title, escalation: { level: next } };
+  const fakeTask: any = {
+    title: row.title,
+    escalation: { level: next },
+  };
+
   const payload = getCatCopy(fakeTask, "manual_escalate", {
     actor: "sender",
     level: next,
   });
 
-  // Push to everyone else in the pair
+  // Safe no-op if push is not ready
   await sendPushToPairExceptDevice({
     pairId: p,
-    exceptDeviceLabel: deviceName, // (Nicole phone / Partner phone)
+    exceptDeviceLabel: deviceName,
     title: `${payload.emoji} ${payload.title}`,
     body: payload.body,
   });
@@ -335,7 +383,7 @@ async function joinPair() {
           contentContainerStyle={{ paddingBottom: 24 }}
           ListEmptyComponent={<Text style={{ opacity: 0.7 }}>No nudges yet.</Text>}
           renderItem={({ item }) => {
-           const fakeTask: any = {
+            const fakeTask: any = {
               title: item.title,
               escalation: { level: item.escalation_level },
             };
@@ -343,38 +391,31 @@ async function joinPair() {
             const event =
               item.status === "done"
                 ? "done"
-                : item.escalation_level > 0
-                  ? "manual_escalate"
-                  : "created";
+                : (item.last_event as any) || "created";
 
-            const actor = item.escalation_level > 0 ? "sender" : "system";
+            const actor =
+              event === "manual_escalate" ? "sender" : "system";
 
-            const copy = getCatCopy(fakeTask, event as any, {
-              actor: actor as any,
+            const copy = getCatCopy(fakeTask, event, {
+              actor,
               level: item.escalation_level,
             });
 
             const line = `${copy.emoji} ${copy.body}`;
             const isDone = item.status === "done";
+            const isExpired = item.last_event === "expired";
             const isSender = !!deviceName && item.sender_device === deviceName;
+            
 
             return (
-              <View
-                style={{
-                  padding: 12,
-                  borderWidth: 1,
-                  borderRadius: 12,
-                  borderColor: "#eee",
-                  marginBottom: 10,
-                }}
-              >
+              <NudgeCard pulseKey={`${item.last_event_at ?? item.created_at}-${item.escalation_level}`}>
                 <Text style={{ fontSize: 16, fontWeight: "600" }}>
                   {item.title} {isDone ? "✅" : ""}
                 </Text>
 
                 <Text style={{ marginTop: 6, opacity: 0.85 }}>{line}</Text>
 
-                {!isDone && (
+                {!isDone && !isExpired && (
                   <View style={{ flexDirection: "row", gap: 8, marginTop: 10 }}>
                   <Pressable
                     onPress={() => markDone(item.id)}
@@ -393,7 +434,7 @@ async function joinPair() {
                   )}
                 </View>
                 )}
-              </View>
+              </NudgeCard>
             );
           }}
         />
