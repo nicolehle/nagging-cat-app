@@ -8,6 +8,15 @@ import { usePairing } from "@/src/features/nudge/hooks/usePairing";
 import { useNudges } from "@/src/features/nudge/hooks/useNudges";
 import { useNudgeTicker } from "@/src/features/nudge/hooks/useNudgeTicker";
 import { PairingPanel } from "@/src/features/nudge/components/PairingPanel";
+import { Emote } from "@/src/components/emote/Emote";
+
+const EMOTES = {
+  hi: require("@/assets/images/emotes/nag-hi.png"),
+  alert: require("@/assets/images/emotes/nag-alert.png"),
+  sleep: require("@/assets/images/emotes/nag-sleep.png"),
+  gift: require("@/assets/images/emotes/nag-gift.png"),
+} as const;
+
 
 export default function HomeScreen() {
   const [title, setTitle] = useState("");
@@ -86,7 +95,29 @@ export default function HomeScreen() {
             const isSender = !!deviceName && item.sender_device === deviceName;
 
             return (
-              <NudgeCard pulseKey={`${item.last_event_at ?? item.created_at}-${item.escalation_level}`}>
+              <NudgeCard
+                pulseKey={`${item.last_event_at ?? item.created_at}-${item.escalation_level}`}
+                leftSlot={
+                  <Emote
+                    source={
+                      item.status === "done"
+                        ? EMOTES.gift
+                        : item.last_event === "manual_escalate" || item.last_event === "expired"
+                        ? EMOTES.alert
+                        : EMOTES.hi
+                    }
+                    anim={
+                      item.status === "done"
+                        ? "gift"
+                        : item.last_event === "manual_escalate" || item.last_event === "expired"
+                        ? "alert"
+                        : "hi"
+                    }
+                    triggerKey={`${item.last_event_at ?? item.created_at}-${item.escalation_level}`}
+                    size={46}
+                  />
+                }
+              >
                 <Text style={{ fontSize: 16, fontWeight: "600" }}>
                   {item.title} {isDone ? "✅" : ""}
                 </Text>

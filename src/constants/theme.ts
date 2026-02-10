@@ -27,27 +27,73 @@ export const Colors = {
   },
 };
 
-export const Fonts = Platform.select({
-  ios: {
-    /** iOS `UIFontDescriptorSystemDesignDefault` */
-    sans: 'system-ui',
-    /** iOS `UIFontDescriptorSystemDesignSerif` */
-    serif: 'ui-serif',
-    /** iOS `UIFontDescriptorSystemDesignRounded` */
-    rounded: 'ui-rounded',
-    /** iOS `UIFontDescriptorSystemDesignMonospaced` */
-    mono: 'ui-monospace',
+export const nagTheme = {
+  colors: {
+    // Backgrounds (warm paper)
+    bg: "#FBF6EF",
+    bgTexture: "#F4EDE4",
+
+    // Card surfaces
+    card: "#FFFCF7",
+    cardInner: "#FFF7EE",
+
+    // Ink (emote-like brown instead of black)
+    ink: "#3B2A22",
+    inkSoft: "#6E5A4E",
+    inkFaint: "#9A8579",
+
+    // Accents (muted cocoa / latte)
+    cocoa: "#7A4F3A",
+    latte: "#E9D7C7",
+    sand: "#D9C3B3",
+
+    // Status chips
+    chipBg: "#F2E4D8",
+    chipText: "#6E5A4E",
+
+    // Dividers
+    divider: "rgba(59,42,34,0.10)",
   },
-  default: {
-    sans: 'normal',
-    serif: 'serif',
-    rounded: 'normal',
-    mono: 'monospace',
+
+  radii: {
+    xl: 22,
+    lg: 18,
+    md: 14,
+    pill: 999,
   },
-  web: {
-    sans: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
-    serif: "Georgia, 'Times New Roman', serif",
-    rounded: "'SF Pro Rounded', 'Hiragino Maru Gothic ProN', Meiryo, 'MS PGothic', sans-serif",
-    mono: "SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+
+  space: {
+    xs: 6,
+    sm: 10,
+    md: 14,
+    lg: 18,
+    xl: 24,
   },
-});
+
+  text: {
+    title: 22,
+    cardTitle: 18,
+    body: 14,
+    meta: 12,
+  },
+
+  shadow: Platform.select({
+    ios: {
+      shadowColor: "#3B2A22",
+      shadowOpacity: 0.08,
+      shadowRadius: 14,
+      shadowOffset: { width: 0, height: 8 },
+    },
+    android: {
+      elevation: 3,
+    },
+    default: {},
+  }),
+
+  fonts: {
+    regular: "NunitoRegular",
+    semibold: "NunitoSemiBold",
+    bold: "NunitoBold",
+},
+} as const;
+
