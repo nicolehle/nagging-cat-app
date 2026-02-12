@@ -14,30 +14,26 @@ export function usePairing() {
   const [deviceName, setDeviceName] = useState("");
   const [inviteInput, setInviteInput] = useState("");
   const [pairLoading, setPairLoading] = useState(false);
-
-  // load saved pairId
+  const [isReady, setIsReady] = useState(false);
+  
   useEffect(() => {
     (async () => {
-      const saved = await AsyncStorage.getItem(PAIR_KEY);
-      if (saved) setPairId(saved);
+      const savedPair = await AsyncStorage.getItem(PAIR_KEY);
+      const savedDevice = await AsyncStorage.getItem(DEVICE_KEY);
+
+      if (savedPair) setPairId(savedPair);
+      if (savedDevice) setDeviceName(savedDevice);
+
+      setIsReady(true); // ✅ mark hydration complete
     })();
   }, []);
 
-  // save pairId
   useEffect(() => {
     (async () => {
       const p = pairId.trim();
       if (p) await AsyncStorage.setItem(PAIR_KEY, p);
     })();
   }, [pairId]);
-
-  // load device name
-  useEffect(() => {
-    (async () => {
-      const saved = await AsyncStorage.getItem(DEVICE_KEY);
-      if (saved) setDeviceName(saved);
-    })();
-  }, []);
 
   async function createPair() {
     setPairLoading(true);
@@ -121,5 +117,6 @@ export function usePairing() {
     pairLoading,
     createPair,
     joinPair,
+    isReady,
   };
 }

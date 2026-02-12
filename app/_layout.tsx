@@ -10,5 +10,14 @@ export default function RootLayout() {
     return <View />; // prevents font flash
   }
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return  <Stack screenOptions={{ headerShown: false }}>
+    <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack.Screen
+      name="pairing"
+      options={{
+        presentation: "modal",
+        headerShown: false,
+      }}
+    />
+  </Stack>;
 }

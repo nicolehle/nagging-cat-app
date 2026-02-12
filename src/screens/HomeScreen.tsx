@@ -1,10 +1,12 @@
 import { useMemo, useState } from "react";
 import { View, Text, FlatList, Pressable, Modal, TextInput, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { router } from "expo-router";
 
 import { usePairing } from "@/src/features/nudge/hooks/usePairing";
 import { useNudges } from "@/src/features/nudge/hooks/useNudges";
 import { useNudgeTicker } from "@/src/features/nudge/hooks/useNudgeTicker";
+import { nagTheme } from "@/src/constants/theme";
 
 import ChatBubble from "@/src/features/nudge/components/ChatBubble";
 
@@ -34,6 +36,7 @@ export default function HomeScreen() {
   const [composerOpen, setComposerOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const isPaired = !!pairId;
+  const t = nagTheme;
 
   function openComposer() {
       if (!isPaired) return; // or open pairing gate if you want
@@ -102,11 +105,15 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safe}>
-      <View style={styles.header}>
-        <Text style={styles.title}>🐾 Live Drama</Text>
-        <Text style={styles.subtitle}>
-          Only the last 24 hours
-        </Text>
+      <View style={styles.headerRow}>
+        <View style={{ flex: 1 }}>
+          <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.bold }]}>🐾 Live Drama</Text>
+          <Text style={styles.subtitle}>Only the last 24 hours</Text>
+        </View>
+
+        <Pressable style={styles.gearBtn} onPress={() => router.push("/pairing")}>
+          <Text style={styles.gearText}>⚙️</Text>
+        </Pressable>
       </View>
 
       <FlatList
@@ -212,6 +219,27 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 6,
   },
+  
+  headerRow: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    paddingBottom: 6,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+  },
+
+  gearBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.10)",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(255,255,255,0.9)",
+  },
+gearText: { fontSize: 18 },
 
   title: {
     fontSize: 24,
