@@ -32,7 +32,7 @@ function dayLabel(date: Date) {
 
 export default function HomeScreen() {
   const { pairId, deviceName } = usePairing();
-  const { nudges, sendNudge, markDone, escalate } = useNudges(pairId, deviceName);
+  const { nudges, sendNudge, markDone, escalate, renewNudge } = useNudges(pairId, deviceName);
   const [composerOpen, setComposerOpen] = useState(false);
   const [draftTitle, setDraftTitle] = useState("");
   const isPaired = !!pairId;
@@ -74,7 +74,7 @@ export default function HomeScreen() {
         const tb = new Date(
           b.last_event_at ?? b.created_at
         ).getTime();
-        return tb - ta; // newest first
+        return ta - tb; // oldest first
       });
 
     const result: any[] = [];
@@ -120,7 +120,7 @@ export default function HomeScreen() {
         style={styles.list}
         data={rows}
         keyExtractor={(r) => r.id}
-        inverted
+        inverted={false}
         contentContainerStyle={{ paddingBottom: 40, paddingTop: 10 }}
         ListEmptyComponent={
           <View style={styles.empty}>
@@ -164,6 +164,7 @@ export default function HomeScreen() {
                 deviceName={deviceName}
                 markDone={markDone}
                 escalate={escalate}
+                 renewNudge={renewNudge}
               />
             </View>
           );

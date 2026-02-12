@@ -97,6 +97,24 @@ export function useNudges(pairId: string, deviceName: string) {
     [pairId, deviceName, load]
   );
 
+  const renewNudge = useCallback(async (id: string) => {
+    hapticLight();
+
+    const { error } = await supabase
+      .from("nudges")
+      .update({
+        status: "pending",
+        escalation_level: 0,
+        last_event: "renewed",
+        last_event_at: new Date().toISOString(),
+        done_at: null,
+      })
+      .eq("id", id);
+
+    if (error) return Alert.alert("Update error", error.message);
+    load();
+  }, [load]);
+
   const markDone = useCallback(
     async (id: string) => {
       hapticLight();
@@ -161,5 +179,5 @@ export function useNudges(pairId: string, deviceName: string) {
     [pairId, nudges, deviceName, load]
   );
 
-  return { nudges, loading, load, sendNudge, markDone, escalate };
+  return { nudges, loading, load, sendNudge, markDone, escalate, renewNudge };
 }

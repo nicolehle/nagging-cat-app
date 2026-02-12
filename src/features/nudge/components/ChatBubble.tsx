@@ -16,6 +16,7 @@ type Props = {
   deviceName?: string | null;
   markDone: (id: string) => void;
   escalate: (id: string, level: number) => void;
+  renewNudge: (id: string) => void;
 };
 
 export default function ChatBubble({
@@ -24,6 +25,7 @@ export default function ChatBubble({
   deviceName,
   markDone,
   escalate,
+  renewNudge,
 }: Props) {
   const level = Number(item.escalation_level ?? 0);
   const isDone = item.status === "done";
@@ -169,6 +171,13 @@ export default function ChatBubble({
                 <Text>Escalate 😼</Text>
               </Pressable>
             )}
+          </View>
+        )}
+        {isExpired && isSender && (
+          <View style={styles.actionRow}>
+            <Pressable onPress={() => renewNudge(item.id)} style={styles.actionBtn}>
+              <Text>Renew 🔁</Text>
+            </Pressable>
           </View>
         )}
       </View>
