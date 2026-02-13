@@ -98,6 +98,7 @@ export default function ChatBubble({
   return (
     <Animated.View
      style={[
+      { width: "100%" }, // ✅ critical
       {
         alignSelf: isSender ? "flex-end" : "flex-start", // ✅ this fixes the spacing
         transform: [{ scale: shouldGlow ? glowScale : 1 }],
@@ -187,7 +188,7 @@ export default function ChatBubble({
 
 const styles = StyleSheet.create({
   chatBubble: {
-    maxWidth: "85%",
+    width: "100%",
     padding: 14,
     borderRadius: 18,
     borderWidth: 1,

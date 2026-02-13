@@ -152,20 +152,17 @@ export default function HomeScreen() {
             item.sender_device === deviceName;
 
           return (
-            <View
-              style={[
-                styles.messageRow,
-                { alignItems: isSender ? "flex-end" : "flex-start" },
-              ]}
-            >
-              <ChatBubble
-                item={item}
-                isSender={isSender}
-                deviceName={deviceName}
-                markDone={markDone}
-                escalate={escalate}
-                 renewNudge={renewNudge}
-              />
+            <View style={ styles.messageRow }>
+              <View style={[styles.bubbleWrap, isSender ? styles.wrapRight : styles.wrapLeft]}>
+                <ChatBubble
+                  item={item}
+                  isSender={isSender}
+                  deviceName={deviceName}
+                  markDone={markDone}
+                  escalate={escalate}
+                  renewNudge={renewNudge}
+                />
+              </View>
             </View>
           );
         }}
@@ -264,9 +261,21 @@ gearText: { fontSize: 18 },
   },
 
   messageRow: {
-  width: "100%",
-  paddingVertical: 6,
-},
+    width: "100%",
+    paddingVertical: 6,
+  },
+
+  bubbleWrap: {
+    width: "80%",     // ✅ fixed bubble width for all messages
+  },
+
+  wrapLeft: {
+    alignSelf: "flex-start",
+  },
+
+  wrapRight: {
+    alignSelf: "flex-end",
+  },
 
   rowLeft: {
     justifyContent: "flex-start",
