@@ -3,7 +3,7 @@
 export const NUDGE_MAX_HOURS = 24;
 
 // Auto escalation schedule (minutes from "now" each time we schedule next tick)
-export const ESCALATE_DELAYS_MINS = [30, 60, 180, 480, 900, 1380]; // 30m,1h,3h,8h,15h,23h
+export const ESCALATE_DELAYS_MINS = [120, 480, 1200]; // 2h, 8h, 20h
 
 export function addMinutes(d: Date, mins: number) {
   return new Date(d.getTime() + mins * 60_000);
