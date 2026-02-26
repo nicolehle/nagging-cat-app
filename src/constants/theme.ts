@@ -5,88 +5,79 @@
 
 import { Platform } from 'react-native';
 
-const tintColorLight = '#0a7ea4';
-const tintColorDark = '#fff';
+const tintColorLight = "#F48331"; // primary
+const tintColorDark = "#FFC83D";  // accent works well on dark
 
 export const Colors = {
   light: {
-    text: '#11181C',
-    background: '#fff',
+    text: "#403C3D",
+    background: "#FBF6EF",
     tint: tintColorLight,
-    icon: '#687076',
-    tabIconDefault: '#687076',
+    icon: "rgba(64,60,61,0.60)",
+    tabIconDefault: "rgba(64,60,61,0.45)",
     tabIconSelected: tintColorLight,
   },
   dark: {
-    text: '#ECEDEE',
-    background: '#151718',
+    text: "#FFF7EE",
+    background: "#151718",
     tint: tintColorDark,
-    icon: '#9BA1A6',
-    tabIconDefault: '#9BA1A6',
+    icon: "rgba(255,247,238,0.75)",
+    tabIconDefault: "rgba(255,247,238,0.60)",
     tabIconSelected: tintColorDark,
   },
 };
 
 export const nagTheme = {
   colors: {
-    // Backgrounds (warm paper)
+    // --- Warm Sunset Mischief core ---
+    primary: "#F48331",       // Burnt Orange
+    secondary: "#FFA56A",     // Soft Coral
+    accent: "#FFC83D",        // Mustard Gold
+    anchor: "#403C3D",        // Warm Charcoal
+
+    // --- Backgrounds (warm paper) ---
     bg: "#FBF6EF",
     bgTexture: "#F4EDE4",
 
-    // Card surfaces
+    // --- Card surfaces ---
     card: "#FFFCF7",
     cardInner: "#FFF7EE",
 
-    // Ink (emote-like brown instead of black)
-    ink: "#3B2A22",
-    inkSoft: "#6E5A4E",
-    inkFaint: "#9A8579",
+    // --- Text / ink ---
+    ink: "#403C3D",           // use anchor as main ink to match mock
+    inkSoft: "rgba(64,60,61,0.75)",
+    inkFaint: "rgba(64,60,61,0.55)",
 
-    // Accents (muted cocoa / latte)
-    cocoa: "#7A4F3A",
-    latte: "#E9D7C7",
-    sand: "#D9C3B3",
+    // --- UI helpers ---
+    border: "rgba(64,60,61,0.12)",
+    divider: "rgba(64,60,61,0.10)",
 
-    // Status chips
-    chipBg: "#F2E4D8",
-    chipText: "#6E5A4E",
+    // --- Chips / badges ---
+    chipBg: "rgba(244,131,49,0.14)",  // subtle orange wash
+    chipText: "#403C3D",
 
-    // Dividers
-    divider: "rgba(59,42,34,0.10)",
+    // --- States ---
+    success: "#6FAF6A",       // warm green (for checkmarks)
+    warning: "#FFC83D",
+    danger: "#E86A5B",
+
+    // --- On-colors (text/icons on top of fills) ---
+    onPrimary: "#FFFFFF",
+    onAccent: "#403C3D",
   },
 
-  radii: {
-    xl: 22,
-    lg: 18,
-    md: 14,
-    pill: 999,
-  },
-
-  space: {
-    xs: 6,
-    sm: 10,
-    md: 14,
-    lg: 18,
-    xl: 24,
-  },
-
-  text: {
-    title: 22,
-    cardTitle: 18,
-    body: 14,
-    meta: 12,
-  },
+  radii: { xl: 22, lg: 18, md: 14, pill: 999 },
+  space: { xs: 6, sm: 10, md: 14, lg: 18, xl: 24 },
+  text: { title: 22, cardTitle: 18, body: 14, meta: 12 },
 
   shadow: Platform.select({
     ios: {
-      shadowColor: "#3B2A22",
+      shadowColor: "#403C3D",
       shadowOpacity: 0.08,
       shadowRadius: 14,
       shadowOffset: { width: 0, height: 8 },
     },
-    android: {
-      elevation: 3,
-    },
+    android: { elevation: 3 },
     default: {},
   }),
 
@@ -94,6 +85,6 @@ export const nagTheme = {
     regular: "NunitoRegular",
     semibold: "NunitoSemiBold",
     bold: "NunitoBold",
-},
+  },
 } as const;
 
