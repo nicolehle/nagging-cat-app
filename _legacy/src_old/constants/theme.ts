@@ -36,7 +36,7 @@ export const nagTheme = {
     anchor: "#403C3D",        // Warm Charcoal
 
     // --- Backgrounds (warm paper) ---
-    bg: "#FBF6EF",
+    bg: "#F6F1EA",
     bgTexture: "#F4EDE4",
 
     // --- Card surfaces ---

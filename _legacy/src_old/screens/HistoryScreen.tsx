@@ -6,6 +6,7 @@ import { usePairing } from "@/src/features/nudge/hooks/usePairing";
 import { useNudges } from "@/src/features/nudge/hooks/useNudges";
 import { useNudgeTicker } from "@/src/features/nudge/hooks/useNudgeTicker";
 import { nagTheme } from "@/src/constants/theme";
+import { Screen } from "../components/Screen";
 
 // Reuse your ChatBubble component by importing it if you moved it out,
 // OR copy the same ChatBubble you already have into this file.
@@ -44,7 +45,8 @@ export default function HistoryScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safe}>
-      <View style={styles.header}>
+      <Screen>
+        <View style={styles.header}>
         <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.bold }]}>📜 History</Text>
         <Text style={styles.sub}>Older than 24 hours</Text>
 
@@ -75,8 +77,9 @@ export default function HistoryScreen() {
                 isSender={isSender}
                 deviceName={deviceName}
                 markDone={markDone}
-                escalate={escalate}
-              />
+                escalate={escalate} renewNudge={function (id: string): void {
+                  throw new Error("Function not implemented.");
+                } }              />
               <Text style={styles.meta}>
                 {new Date(item.last_event_at ?? item.created_at).toLocaleString()}
               </Text>
@@ -84,6 +87,7 @@ export default function HistoryScreen() {
           );
         }}
       />
+      </Screen>
     </SafeAreaView>
   );
 }

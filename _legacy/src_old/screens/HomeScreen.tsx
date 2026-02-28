@@ -9,6 +9,8 @@ import { useNudgeTicker } from "@/src/features/nudge/hooks/useNudgeTicker";
 import { nagTheme } from "@/src/constants/theme";
 
 import ChatBubble from "@/src/features/nudge/components/ChatBubble";
+import { Screen } from "../components/Screen";
+import { NagHeader } from "../features/nudge/components/NagHeader";
 
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -105,103 +107,106 @@ export default function HomeScreen() {
 
   return (
     <SafeAreaView edges={["top"]} style={styles.safe}>
-      <View style={styles.headerRow}>
-        <View style={{ flex: 1 }}>
-          <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.bold }]}>🐾 Live Drama</Text>
-          <Text style={styles.subtitle}>Only the last 24 hours</Text>
-        </View>
-
-        <Pressable style={styles.gearBtn} onPress={() => router.push("/pairing")}>
-          <Text style={styles.gearText}>⚙️</Text>
-        </Pressable>
-      </View>
-
-      <FlatList
-        style={styles.list}
-        data={rows}
-        keyExtractor={(r) => r.id}
-        inverted={false}
-        contentContainerStyle={{ paddingBottom: 40, paddingTop: 10 }}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <Text style={styles.emptyEmoji}>😼</Text>
-            <Text style={styles.emptyTitle}>
-              The house is quiet…
-            </Text>
-            <Text style={styles.emptyText}>
-              Start the chaos.
-            </Text>
+      <Screen>
+        <NagHeader title="Live Drama" subtitle="Only the last 24 hours" badgeCount={3} />
+        {/* <View style={styles.headerRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.title, { color: t.colors.ink, fontFamily: t.fonts.bold }]}>🐾 Live Drama</Text>
+            <Text style={styles.subtitle}>Only the last 24 hours</Text>
           </View>
-        }
-        renderItem={({ item: row }) => {
-          if (row.type === "divider") {
+
+          <Pressable style={styles.gearBtn} onPress={() => router.push("/pairing")}>
+            <Text style={styles.gearText}>⚙️</Text>
+          </Pressable>
+        </View> */}
+
+        <FlatList
+          style={styles.list}
+          data={rows}
+          keyExtractor={(r) => r.id}
+          inverted={false}
+          contentContainerStyle={{ paddingBottom: 40, paddingTop: 10 }}
+          ListEmptyComponent={
+            <View style={styles.empty}>
+              <Text style={styles.emptyEmoji}>😼</Text>
+              <Text style={styles.emptyTitle}>
+                The house is quiet…
+              </Text>
+              <Text style={styles.emptyText}>
+                Start the chaos.
+              </Text>
+            </View>
+          }
+          renderItem={({ item: row }) => {
+            if (row.type === "divider") {
+              return (
+                <View style={styles.dividerWrap}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>
+                    {row.label}
+                  </Text>
+                  <View style={styles.dividerLine} />
+                </View>
+              );
+            }
+
+            const item = row.item;
+            const isSender =
+              !!deviceName &&
+              item.sender_device === deviceName;
+
             return (
-              <View style={styles.dividerWrap}>
-                <View style={styles.dividerLine} />
-                <Text style={styles.dividerText}>
-                  {row.label}
-                </Text>
-                <View style={styles.dividerLine} />
+              <View style={ styles.messageRow }>
+                <View style={[styles.bubbleWrap, isSender ? styles.wrapRight : styles.wrapLeft]}>
+                  <ChatBubble
+                    item={item}
+                    isSender={isSender}
+                    deviceName={deviceName}
+                    markDone={markDone}
+                    escalate={escalate}
+                    renewNudge={renewNudge}
+                  />
+                </View>
               </View>
             );
-          }
+          }}
+        />
+        <Pressable style={styles.fab} onPress={openComposer}>
+          <Text style={styles.fabText}>＋ Nudge 🐾</Text>
+        </Pressable>
+        
+        <Modal
+          visible={composerOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={closeComposer}
+        >
+          <Pressable style={styles.backdrop} onPress={closeComposer} />
 
-          const item = row.item;
-          const isSender =
-            !!deviceName &&
-            item.sender_device === deviceName;
+          <View style={styles.modalCenterWrap}>
+            <View style={styles.modalCard}>
+              <Text style={styles.modalTitle}>🐾 Send a Nudge</Text>
 
-          return (
-            <View style={ styles.messageRow }>
-              <View style={[styles.bubbleWrap, isSender ? styles.wrapRight : styles.wrapLeft]}>
-                <ChatBubble
-                  item={item}
-                  isSender={isSender}
-                  deviceName={deviceName}
-                  markDone={markDone}
-                  escalate={escalate}
-                  renewNudge={renewNudge}
-                />
+              <Text style={styles.label}>Nudge</Text>
+              <TextInput
+                value={draftTitle}
+                onChangeText={setDraftTitle}
+                placeholder="Laundry"
+                style={styles.input}
+                autoFocus
+                returnKeyType="send"
+                onSubmitEditing={onSend}
+              />
+
+              <View style={{ marginTop: 12 }}>
+                <Pressable style={styles.primaryBtn} onPress={onSend}>
+                  <Text style={styles.primaryBtnText}>Send 🐾</Text>
+                </Pressable>
               </View>
             </View>
-          );
-        }}
-      />
-      <Pressable style={styles.fab} onPress={openComposer}>
-        <Text style={styles.fabText}>＋ Nudge 🐾</Text>
-      </Pressable>
-      
-      <Modal
-        visible={composerOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={closeComposer}
-      >
-        <Pressable style={styles.backdrop} onPress={closeComposer} />
-
-        <View style={styles.modalCenterWrap}>
-          <View style={styles.modalCard}>
-            <Text style={styles.modalTitle}>🐾 Send a Nudge</Text>
-
-            <Text style={styles.label}>Nudge</Text>
-            <TextInput
-              value={draftTitle}
-              onChangeText={setDraftTitle}
-              placeholder="Laundry"
-              style={styles.input}
-              autoFocus
-              returnKeyType="send"
-              onSubmitEditing={onSend}
-            />
-
-            <View style={{ marginTop: 12 }}>
-              <Pressable style={styles.primaryBtn} onPress={onSend}>
-                <Text style={styles.primaryBtnText}>Send 🐾</Text>
-              </Pressable>
-            </View>
           </View>
-        </View>
-      </Modal>
+        </Modal>
+      </Screen>
     </SafeAreaView>
   );
 }
