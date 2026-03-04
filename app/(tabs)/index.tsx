@@ -8,14 +8,15 @@ import { ScreenHeader } from "@/src/ui/ScreenHeader";
 import { SectionHeader } from "@/src/ui/SectionHeader";
 import { Txt } from "@/src/ui/Txt";
 
-import { CreateNudgePanel } from "@/src/features/nudges/CreateNudgePanel";
 import { NudgeCard } from "@/src/features/nudges/NudgeCard";
+import { SendNudgeModal } from "@/src/features/nudges/SendNudgeModal";
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
 import { toHomeCardModel } from "@/src/features/nudges/cardModel";
 import { sortForHome } from "@/src/features/nudges/sort";
 import { deriveStatus } from "@/src/features/nudges/status";
 import { Nudge } from "@/src/features/nudges/types";
 import { formatTimeLeft, msFromNow } from "@/src/lib/time";
+import { FloatingActionButton } from "@/src/ui/FloatingActionButton";
 
 function makeMockNudges(): Nudge[] {
   const now = Date.now();
@@ -60,9 +61,11 @@ type Row =
   | { kind: "nudge"; nudge: Nudge; id: string };
 
 export default function Home() {
-  const [title, setTitle] = useState("");
   const [nudges, setNudges] = useState<Nudge[]>(() => makeMockNudges());
-
+  const [modalOpen, setModalOpen] = useState(false);
+  const [emoji, setEmoji] = useState("📣");
+  const [nudgeTitle, setNudgeTitle] = useState("");
+  const [nudgeMessage, setNudgeMessage] = useState("");
   // tick so expiry updates on screen
   useEffect(() => {
     const t = setInterval(() => setNudges((prev) => [...prev]), 60 * 1000);
@@ -110,31 +113,6 @@ export default function Home() {
               title="Active Nudges"
               subtitle="Expires in 24 hours"
               iconBg={tokens.colors.primary}
-            />
-
-            <CreateNudgePanel
-              title={title}
-              onChangeTitle={setTitle}
-              onSend={() => {
-                const t = title.trim();
-                if (!t) return;
-
-                const now = Date.now();
-                setNudges((prev) => [
-                  {
-                    id: String(now),
-                    emoji: "📣",
-                    title: t,
-                    createdAt: now,
-                    expiresAt: now + 24 * 60 * 60 * 1000,
-                    from: "me",
-                    status: "active",
-                    escalationLevel: 0,
-                  },
-                  ...prev,
-                ]);
-                setTitle("");
-              }}
             />
           </>
         }
@@ -188,6 +166,44 @@ export default function Home() {
             <Txt variant="muted">Send one above and it’ll show here.</Txt>
           </View>
         }
+      />
+
+      <FloatingActionButton onPress={() => setModalOpen(true)} />
+
+      <SendNudgeModal
+        visible={modalOpen}
+        emoji={emoji}
+        title={nudgeTitle}
+        message={nudgeMessage}
+        onChangeEmoji={setEmoji}
+        onChangeTitle={setNudgeTitle}
+        onChangeMessage={setNudgeMessage}
+        onClose={() => setModalOpen(false)}
+        onSend={() => {
+          const t = nudgeTitle.trim();
+          const m = nudgeMessage.trim();
+          if (!t || !m) return;
+
+          const now = Date.now();
+          setNudges((prev) => [
+            {
+              id: String(now),
+              emoji,
+              title: t,
+              message: m,
+              createdAt: now,
+              expiresAt: now + 24 * 60 * 60 * 1000,
+              from: "me",
+              status: "active",
+              escalationLevel: 0,
+            },
+            ...prev,
+          ]);
+
+          setNudgeTitle("");
+          setNudgeMessage("");
+          setModalOpen(false);
+  }}
       />
     </Screen>
   );

@@ -1,9 +1,8 @@
 import { CardVariant, NudgeCardModel } from "@/src/features/nudges/cardModel";
 import { tokens } from "@/src/theme/tokens";
-import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
 import { Txt } from "@/src/ui/Txt";
-import { StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
 
 type Props = {
   variant: CardVariant;
@@ -91,7 +90,7 @@ export function NudgeCard({
               {model.title}
             </Txt>
 
-            {variant === "history" && model.message ? (
+            { model.message ? (
               <Txt variant="body" style={styles.message}>
                 {model.message}
               </Txt>
@@ -123,19 +122,23 @@ export function NudgeCard({
         </View>
 
         {/* Actions for Home */}
-        {variant === "home" ? (
-          <View style={styles.actions}>
+      {variant === "home" ? (
+          <View style={styles.homeFooter}>
+            <View style={[styles.statusPill, { backgroundColor: `${statusPill[status].color}15` }]}>
+              <Txt variant="label" style={{ color: statusPill[status].color }}>
+                {status === "active" ? "Active" : statusPill[status].label ?? model.statusLabel}
+              </Txt>
+            </View>
+
             {actionable ? (
-              <>
-                <Button label="Done" onPress={() => onDone?.(model.id)} style={styles.actionBtn} />
-                <Button label="Nudge" variant="ghost" onPress={() => onNudge?.(model.id)} style={styles.actionBtn} />
-                <Button label="Escalate" variant="secondary" onPress={() => onEscalate?.(model.id)} style={styles.actionBtn} />
-              </>
-            ) : (
-              <Button label="Dismiss" variant="ghost" onPress={() => onDismiss?.(model.id)} style={styles.actionBtn} />
-            )}
+              <Pressable onPress={() => onDone?.(model.id)} hitSlop={10}>
+                <Txt variant="label" style={styles.markDone}>
+                  Mark Done
+                </Txt>
+              </Pressable>
+            ) : null}
           </View>
-        ) : null}
+      ) : null}
       </Card>
     </View>
   );
@@ -214,4 +217,13 @@ const styles = StyleSheet.create({
     marginTop: tokens.space.lg,
   },
   actionBtn: { flex: 1 },
+  homeFooter: {
+  flexDirection: "row",
+  alignItems: "center",
+  justifyContent: "space-between",
+  marginTop: tokens.space.lg,
+},
+markDone: {
+  color: tokens.colors.primary,
+},
 });

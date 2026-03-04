@@ -1,0 +1,2 @@
+export const FAVORITE_EMOJIS = ["📣", "💧", "🧘", "🧠", "🧺", "🍳", "🧹", "💊", "🐱", "📦"] as const;
+export type FavoriteEmoji = (typeof FAVORITE_EMOJIS)[number];
