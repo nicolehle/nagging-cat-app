@@ -1,17 +1,11 @@
 import { tokens } from "@/src/theme/tokens";
 import { Txt } from "@/src/ui/Txt";
-import { Pressable, StyleSheet, ViewStyle } from "react-native";
+import { Pressable, StyleSheet } from "react-native";
 
-export function FloatingActionButton({
-  onPress,
-  style,
-}: {
-  onPress: () => void;
-  style?: ViewStyle;
-}) {
+export function FloatingActionButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={[styles.fab, style]}>
-      <Txt variant="h2" style={{ color: tokens.colors.white }}>
+    <Pressable onPress={onPress} style={styles.fab}>
+      <Txt variant="h2" style={styles.plus}>
         +
       </Txt>
     </Pressable>
@@ -22,12 +16,17 @@ const styles = StyleSheet.create({
   fab: {
     position: "absolute",
     right: 18,
-    bottom: 92, // above tab bar
-    width: 56,
-    height: 56,
-    borderRadius: tokens.radius.pill,
+    bottom: 18, // normal tabs: keep it close to bottom
+    width: 64,
+    height: 64,
+    borderRadius: 999,
     backgroundColor: tokens.colors.primary,
     alignItems: "center",
     justifyContent: "center",
+    elevation: 8,
+  },
+  plus: {
+    color: "#fff",
+    lineHeight: 28,
   },
 });

@@ -1,4 +1,4 @@
-export type NudgeStatus = "active" | "done" | "escalated" | "expired";
+export type NudgeStatus = "active" | "done" | "escalated" | "expired" | "dismissed";
 
 export type Nudge = {
   id: string;

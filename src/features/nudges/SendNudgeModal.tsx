@@ -56,7 +56,7 @@ export function SendNudgeModal({
 
         <View style={styles.btnRow}>
           <Button label="Cancel" variant="ghost" onPress={onClose} style={{ flex: 1 }} />
-          <Button label="Send Nudge" onPress={onSend} style={{ flex: 1 }} />
+          <Button label="Send Nudge" onPress={onSend} style={{ flex: 1 }}  disabled={!title.trim()} />
         </View>
 
         <View style={{ height: 10 }} />

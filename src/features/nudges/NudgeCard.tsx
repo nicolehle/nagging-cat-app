@@ -8,23 +8,29 @@ type Props = {
   variant: CardVariant;
   model: NudgeCardModel;
 
+  // optional override; default: partner=left, me=right
+  align?: "left" | "right";
+
   // Home actions (optional)
   onDone?: (id: string) => void;
   onEscalate?: (id: string) => void;
   onNudge?: (id: string) => void;
   onDismiss?: (id: string) => void;
+  onRenew?: (id: string) => void;
 };
 
 const statusPill = {
-  active: { label: null, color: tokens.colors.primary }, // label handled by model.statusLabel
+  active: { label: null, color: tokens.colors.primary },
   escalated: { label: "Escalated!", color: tokens.colors.accent },
   done: { label: "Done", color: tokens.colors.loveAccent },
   expired: { label: "Expired", color: tokens.colors.neutralSoft },
+  dismissed: { label: "Dismissed", color: tokens.colors.neutralSoft },
 } as const;
 
 export function NudgeCard({
   variant,
   model,
+  align: alignProp,
   onDone,
   onEscalate,
   onNudge,
@@ -34,18 +40,14 @@ export function NudgeCard({
   const actionable = status === "active" || status === "escalated";
 
   const fromIsMe = model.from === "me";
+  const align = alignProp ?? (fromIsMe ? "right" : "left");
 
   return (
-    <View style={styles.outer}>
+    <View style={[styles.wrap, align === "right" ? styles.right : styles.left]}>
       <Card style={styles.card}>
         {/* Sender row */}
         <View style={styles.topRow}>
-          <View
-            style={[
-              styles.pill,
-              fromIsMe ? styles.mePill : styles.partnerPill,
-            ]}
-          >
+          <View style={[styles.pill, fromIsMe ? styles.mePill : styles.partnerPill]}>
             <Txt variant="label" style={styles.pillText}>
               {model.fromLabel}
             </Txt>
@@ -58,12 +60,7 @@ export function NudgeCard({
               </Txt>
             ) : null}
 
-            <View
-              style={[
-                styles.statusBadge,
-                status === "expired" && styles.expiredBadge,
-              ]}
-            >
+            <View style={[styles.statusBadge, status === "expired" && styles.expiredBadge]}>
               <Txt variant="muted" style={styles.statusText}>
                 {model.statusLabel}
               </Txt>
@@ -90,7 +87,7 @@ export function NudgeCard({
               {model.title}
             </Txt>
 
-            { model.message ? (
+            {model.message ? (
               <Txt variant="body" style={styles.message}>
                 {model.message}
               </Txt>
@@ -105,7 +102,8 @@ export function NudgeCard({
                   ]}
                 >
                   <Txt variant="label" style={{ color: statusPill[status].color }}>
-                    {statusPill[status].label ?? (status === "active" ? "Active" : model.statusLabel)}
+                    {statusPill[status].label ??
+                      (status === "active" ? "Active" : model.statusLabel)}
                   </Txt>
                 </View>
 
@@ -115,14 +113,12 @@ export function NudgeCard({
                   </Txt>
                 ) : null}
               </View>
-            ) : (
-              <Txt variant="muted">Escalation: {model.escalationLevel ?? 0}</Txt>
-            )}
+            ) : null}
           </View>
         </View>
 
-        {/* Actions for Home */}
-      {variant === "home" ? (
+        {/* Home footer (Figma key elements) */}
+        {variant === "home" ? (
           <View style={styles.homeFooter}>
             <View style={[styles.statusPill, { backgroundColor: `${statusPill[status].color}15` }]}>
               <Txt variant="label" style={{ color: statusPill[status].color }}>
@@ -130,22 +126,48 @@ export function NudgeCard({
               </Txt>
             </View>
 
-            {actionable ? (
-              <Pressable onPress={() => onDone?.(model.id)} hitSlop={10}>
-                <Txt variant="label" style={styles.markDone}>
-                  Mark Done
-                </Txt>
-              </Pressable>
+            {/* Right-side actions */}
+            {status === "expired" ? (
+              <View style={styles.homeExpiredActions}>
+                <Pressable onPress={() => onRenew?.(model.id)} hitSlop={10}>
+                  <Txt variant="label" style={styles.actionText}>
+                    Renew
+                  </Txt>
+                </Pressable>
+                <Pressable onPress={() => onDismiss?.(model.id)} hitSlop={10}>
+                  <Txt variant="label" style={styles.actionTextMuted}>
+                    Dismiss
+                  </Txt>
+                </Pressable>
+              </View>
+            ) : actionable ? (
+              fromIsMe ? (
+                <Pressable onPress={() => onNudge?.(model.id)} hitSlop={10}>
+                  <Txt variant="label" style={styles.actionText}>
+                    Nudge
+                  </Txt>
+                </Pressable>
+              ) : (
+                <Pressable onPress={() => onDone?.(model.id)} hitSlop={10}>
+                  <Txt variant="label" style={styles.actionText}>
+                    Mark Done
+                  </Txt>
+                </Pressable>
+              )
             ) : null}
           </View>
-      ) : null}
+        ) : null}
       </Card>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  outer: {},
+  // Alignment
+  wrap: {},
+  left: { marginRight: 14 },
+  right: { marginLeft: 14 },
+
   card: { padding: tokens.space.lg },
 
   topRow: {
@@ -211,19 +233,20 @@ const styles = StyleSheet.create({
   },
   waiting: { opacity: 0.4 },
 
-  actions: {
+  homeFooter: {
     flexDirection: "row",
-    gap: tokens.space.sm,
+    alignItems: "center",
+    justifyContent: "space-between",
     marginTop: tokens.space.lg,
   },
-  actionBtn: { flex: 1 },
-  homeFooter: {
-  flexDirection: "row",
-  alignItems: "center",
-  justifyContent: "space-between",
-  marginTop: tokens.space.lg,
-},
-markDone: {
-  color: tokens.colors.primary,
-},
-});
+  actionText: {
+    color: tokens.colors.primary,
+  },
+  homeExpiredActions: {
+    flexDirection: "row",
+    gap: 14,
+    alignItems: "center",
+  },
+  actionText: { color: tokens.colors.primary },
+  actionTextMuted: { color: tokens.colors.anchor, opacity: 0.55 },
+  });

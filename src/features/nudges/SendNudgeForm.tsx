@@ -23,6 +23,7 @@ export function SendNudgeForm({
 
   return (
     <View style={styles.wrap}>
+      <Txt variant="label">Pick an emoji</Txt>
       <FavoriteEmojiRow value={emoji} onChange={onChangeEmoji} />
 
       <View style={{ height: tokens.space.md }} />
@@ -40,7 +41,7 @@ export function SendNudgeForm({
       <Input
         value={message}
         onChangeText={(v) => onChangeMessage(v.slice(0, max))}
-        placeholder="Hey babe, the hamper is getting pretty full..."
+        placeholder="Hey babe, just a gentle reminder..."
         multiline
         style={styles.messageBox}
       />

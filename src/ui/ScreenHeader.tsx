@@ -35,7 +35,7 @@ export function ScreenHeader({
 
 const styles = StyleSheet.create({
   wrap: {
-    paddingHorizontal: 20, // match Figma header padding
+    paddingHorizontal: tokens.space.xl, // match Figma header padding
     paddingTop: 24,
     paddingBottom: 16,
   },

@@ -74,7 +74,7 @@ export default function Home() {
 
   const visibleNudges = useMemo(() => {
     return nudges
-      .filter((n) => n.status !== "done")
+      .filter((n) => n.status !== "done" && n.status !== "dismissed")
       .slice()
       .sort(sortForHome);
   }, [nudges]);
@@ -154,7 +154,25 @@ export default function Home() {
                     )
                   )
                 }
-                onDismiss={(id) => setNudges((prev) => prev.filter((n) => n.id !== id))}
+                onDismiss={(id) =>
+                  setNudges((prev) =>
+                    prev.map((n) => (n.id === id ? { ...n, status: "dismissed" } : n))
+                  )
+                }
+                onRenew={(id) =>
+                  setNudges((prev) =>
+                    prev.map((n) => {
+                      if (n.id !== id) return n;
+                      const now = Date.now();
+                      return {
+                        ...n,
+                        status: "active",
+                        expiresAt: now + 24 * 60 * 60 * 1000,
+                        escalationLevel: 0, // recommend reset; easy to change if you want
+                      };
+                    })
+                  )
+                }
                 onNudge={() => {}}
               />
             </View>
@@ -182,7 +200,7 @@ export default function Home() {
         onSend={() => {
           const t = nudgeTitle.trim();
           const m = nudgeMessage.trim();
-          if (!t || !m) return;
+          if (!t) return; // title required, message optional
 
           const now = Date.now();
           setNudges((prev) => [
