@@ -2,7 +2,7 @@ import { deriveStatus } from "@/src/features/nudges/status";
 import { Nudge } from "@/src/features/nudges/types";
 
 export type CardVariant = "home" | "history";
-export type CardStatus = "active" | "done" | "escalated" | "expired";
+export type CardStatus = "active" | "done" | "escalated" | "expired" | "dismissed";
 
 export type NudgeCardModel = {
   id: string;

@@ -35,6 +35,7 @@ export function NudgeCard({
   onEscalate,
   onNudge,
   onDismiss,
+  onRenew,
 }: Props) {
   const status = model.status;
   const actionable = status === "active" || status === "escalated";
@@ -247,6 +248,5 @@ const styles = StyleSheet.create({
     gap: 14,
     alignItems: "center",
   },
-  actionText: { color: tokens.colors.primary },
   actionTextMuted: { color: tokens.colors.anchor, opacity: 0.55 },
-  });
+});

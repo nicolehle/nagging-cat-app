@@ -1,102 +1,119 @@
-// app/(tabs)/index.tsx
-import { useEffect, useMemo, useState } from "react";
-import { FlatList, StyleSheet, View } from "react-native";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, FlatList, StyleSheet, View } from "react-native";
+import { useFocusEffect } from "@react-navigation/native";
 
-import { tokens } from "@/src/theme/tokens";
-import { Screen } from "@/src/ui/Screen";
-import { ScreenHeader } from "@/src/ui/ScreenHeader";
-import { SectionHeader } from "@/src/ui/SectionHeader";
-import { Txt } from "@/src/ui/Txt";
-
+import {
+  dismiss,
+  escalate,
+  fetchActiveNudges,
+  markDone,
+  renewExpiredNudge,
+  sendNudge,
+} from "@/src/features/nudges/api";
 import { NudgeCard } from "@/src/features/nudges/NudgeCard";
 import { SendNudgeModal } from "@/src/features/nudges/SendNudgeModal";
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
 import { toHomeCardModel } from "@/src/features/nudges/cardModel";
+import { getNudgeSession } from "@/src/features/nudges/session";
 import { sortForHome } from "@/src/features/nudges/sort";
 import { deriveStatus } from "@/src/features/nudges/status";
-import { Nudge } from "@/src/features/nudges/types";
+import type { Nudge } from "@/src/features/nudges/types";
 import { formatTimeLeft, msFromNow } from "@/src/lib/time";
+import { tokens } from "@/src/theme/tokens";
 import { FloatingActionButton } from "@/src/ui/FloatingActionButton";
-
-function makeMockNudges(): Nudge[] {
-  const now = Date.now();
-  const day = 24 * 60 * 60 * 1000;
-
-  return [
-    {
-    id: "1",
-  emoji: "💧",
-  title: "Drink water",
-      createdAt: now - 25 * 60 * 1000,
-      expiresAt: now - 25 * 60 * 1000 + day,
-      from: "partner",
-      status: "active",
-      escalationLevel: 1,
-    },
-    {
-      id: "2",
-      emoji: "📣",
-      title: "Stretch 5 min",
-      createdAt: now - 2 * 60 * 60 * 1000,
-      expiresAt: now - 2 * 60 * 60 * 1000 + day,
-      from: "me",
-      status: "active",
-      escalationLevel: 0,
-    },
-    {
-      id: "3",
-      emoji: "📣",
-      title: "Send the email",
-      createdAt: now - 26 * 60 * 60 * 1000, // expired on purpose
-      expiresAt: now - 26 * 60 * 60 * 1000 + day,
-      from: "partner",
-      status: "active",
-      escalationLevel: 3,
-    },
-  ];
-}
+import { Screen } from "@/src/ui/Screen";
+import { ScreenHeader } from "@/src/ui/ScreenHeader";
+import { SectionHeader } from "@/src/ui/SectionHeader";
+import { Txt } from "@/src/ui/Txt";
 
 type Row =
   | { kind: "header"; title: string; count: number; id: string }
   | { kind: "nudge"; nudge: Nudge; id: string };
 
 export default function Home() {
-  const [nudges, setNudges] = useState<Nudge[]>(() => makeMockNudges());
+  const [nudges, setNudges] = useState<Nudge[]>([]);
+  const [sessionReady, setSessionReady] = useState(false);
+  const [pairId, setPairId] = useState<string | null>(null);
+  const [deviceName, setDeviceName] = useState("This device");
   const [modalOpen, setModalOpen] = useState(false);
   const [emoji, setEmoji] = useState("📣");
   const [nudgeTitle, setNudgeTitle] = useState("");
   const [nudgeMessage, setNudgeMessage] = useState("");
-  // tick so expiry updates on screen
+
+  const loadNudges = useCallback(async (showError = false) => {
+    try {
+      const session = await getNudgeSession();
+      setPairId(session.pairId);
+      setDeviceName(session.deviceName);
+      setSessionReady(true);
+
+      if (!session.pairId) {
+        setNudges([]);
+        return;
+      }
+
+      const nextNudges = await fetchActiveNudges(session.pairId, session.deviceName);
+      setNudges(nextNudges);
+    } catch (error) {
+      if (showError) {
+        Alert.alert(
+          "Nudge error",
+          error instanceof Error ? error.message : "Something went wrong."
+        );
+      }
+    }
+  }, []);
+
   useEffect(() => {
-    const t = setInterval(() => setNudges((prev) => [...prev]), 60 * 1000);
-    return () => clearInterval(t);
+    loadNudges();
+  }, [loadNudges]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadNudges();
+    }, [loadNudges])
+  );
+
+  useEffect(() => {
+    const timer = setInterval(() => setNudges((prev) => [...prev]), 60 * 1000);
+    return () => clearInterval(timer);
   }, []);
 
   const visibleNudges = useMemo(() => {
     return nudges
-      .filter((n) => n.status !== "done" && n.status !== "dismissed")
+      .filter((nudge) => nudge.status !== "done" && nudge.status !== "dismissed")
       .slice()
       .sort(sortForHome);
   }, [nudges]);
 
   const rows = useMemo<Row[]>(() => {
-    const active = visibleNudges.filter((n) => {
-      const s = deriveStatus(n);
-      return s === "active" || s === "escalated";
+    const active = visibleNudges.filter((nudge) => {
+      const status = deriveStatus(nudge);
+      return status === "active" || status === "escalated";
     });
 
-    const expired = visibleNudges.filter((n) => deriveStatus(n) === "expired");
+    const expired = visibleNudges.filter((nudge) => deriveStatus(nudge) === "expired");
+    const nextRows: Row[] = [];
 
-    const out: Row[] = [];
     if (active.length) {
-      out.push({ kind: "header", title: "Active", count: active.length, id: "h-active" });
-      out.push(...active.map((n) => ({ kind: "nudge", nudge: n, id: n.id })));
+      nextRows.push({ kind: "header", title: "Active", count: active.length, id: "h-active" });
+      nextRows.push(
+        ...active.map(
+          (nudge): Row => ({ kind: "nudge", nudge, id: nudge.id })
+        )
+      );
     }
+
     if (expired.length) {
-      out.push({ kind: "header", title: "Expired", count: expired.length, id: "h-expired" });
-      out.push(...expired.map((n) => ({ kind: "nudge", nudge: n, id: n.id })));
+      nextRows.push({ kind: "header", title: "Expired", count: expired.length, id: "h-expired" });
+      nextRows.push(
+        ...expired.map(
+          (nudge): Row => ({ kind: "nudge", nudge, id: nudge.id })
+        )
+      );
     }
-    return out;
+
+    return nextRows;
   }, [visibleNudges]);
 
   return (
@@ -107,14 +124,12 @@ export default function Home() {
         contentContainerStyle={styles.list}
         ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={
-          <>
-            <ScreenHeader
-              icon="📣"
-              title="Active Nudges"
-              subtitle="Expires in 24 hours"
-              iconBg={tokens.colors.primary}
-            />
-          </>
+          <ScreenHeader
+            icon="📣"
+            title="Active Nudges"
+            subtitle="Expires in 24 hours"
+            iconBg={tokens.colors.primary}
+          />
         }
         renderItem={({ item }) => {
           if (item.kind === "header") {
@@ -130,8 +145,8 @@ export default function Home() {
             status === "active" || status === "escalated"
               ? formatTimeLeft(msFromNow(item.nudge.expiresAt))
               : status === "expired"
-              ? "Expired"
-              : "Done";
+                ? "Expired"
+                : "Done";
 
           const model: NudgeCardModel = toHomeCardModel(item.nudge, statusLabel);
 
@@ -140,48 +155,75 @@ export default function Home() {
               <NudgeCard
                 variant="home"
                 model={model}
-                onDone={(id) =>
-                  setNudges((prev) =>
-                    prev.map((n) => (n.id === id ? { ...n, status: "done" } : n))
-                  )
-                }
-                onEscalate={(id) =>
-                  setNudges((prev) =>
-                    prev.map((n) =>
-                      n.id === id
-                        ? { ...n, escalationLevel: n.escalationLevel + 1, status: "escalated" }
-                        : n
-                    )
-                  )
-                }
-                onDismiss={(id) =>
-                  setNudges((prev) =>
-                    prev.map((n) => (n.id === id ? { ...n, status: "dismissed" } : n))
-                  )
-                }
-                onRenew={(id) =>
-                  setNudges((prev) =>
-                    prev.map((n) => {
-                      if (n.id !== id) return n;
-                      const now = Date.now();
-                      return {
-                        ...n,
-                        status: "active",
-                        expiresAt: now + 24 * 60 * 60 * 1000,
-                        escalationLevel: 0, // recommend reset; easy to change if you want
-                      };
-                    })
-                  )
-                }
-                onNudge={() => {}}
+                onDone={async (id) => {
+                  try {
+                    await markDone(id);
+                    await loadNudges(true);
+                  } catch (error) {
+                    Alert.alert(
+                      "Nudge error",
+                      error instanceof Error
+                        ? error.message
+                        : "Could not mark this nudge done."
+                    );
+                  }
+                }}
+                onEscalate={async (id) => {
+                  try {
+                    await escalate(id, item.nudge.escalationLevel);
+                    await loadNudges(true);
+                  } catch (error) {
+                    Alert.alert(
+                      "Nudge error",
+                      error instanceof Error ? error.message : "Could not escalate this nudge."
+                    );
+                  }
+                }}
+                onDismiss={async (id) => {
+                  try {
+                    await dismiss(id);
+                    await loadNudges(true);
+                  } catch (error) {
+                    Alert.alert(
+                      "Nudge error",
+                      error instanceof Error ? error.message : "Could not dismiss this nudge."
+                    );
+                  }
+                }}
+                onRenew={async (id) => {
+                  try {
+                    await renewExpiredNudge(id);
+                    await loadNudges(true);
+                  } catch (error) {
+                    Alert.alert(
+                      "Nudge error",
+                      error instanceof Error ? error.message : "Could not renew this nudge."
+                    );
+                  }
+                }}
+                onNudge={async (id) => {
+                  try {
+                    await escalate(id, item.nudge.escalationLevel);
+                    await loadNudges(true);
+                  } catch (error) {
+                    Alert.alert(
+                      "Nudge error",
+                      error instanceof Error ? error.message : "Could not nudge right now."
+                    );
+                  }
+                }}
               />
             </View>
           );
         }}
         ListEmptyComponent={
           <View style={styles.empty}>
-            <Txt variant="h3">No nudges yet</Txt>
-            <Txt variant="muted">Send one above and it’ll show here.</Txt>
+            <Txt variant="h3">{sessionReady && !pairId ? "Connect to start" : "No nudges yet"}</Txt>
+            <Txt variant="muted">
+              {sessionReady && !pairId
+                ? "This app needs a saved pair ID to load shared nudges from Supabase."
+                : "Send one above and it'll show here."}
+            </Txt>
           </View>
         }
       />
@@ -197,31 +239,29 @@ export default function Home() {
         onChangeTitle={setNudgeTitle}
         onChangeMessage={setNudgeMessage}
         onClose={() => setModalOpen(false)}
-        onSend={() => {
-          const t = nudgeTitle.trim();
-          const m = nudgeMessage.trim();
-          if (!t) return; // title required, message optional
+        onSend={async () => {
+          const title = nudgeTitle.trim();
+          if (!title) return;
 
-          const now = Date.now();
-          setNudges((prev) => [
-            {
-              id: String(now),
+          try {
+            await sendNudge({
+              pairId: pairId ?? "",
+              deviceName,
+              title,
               emoji,
-              title: t,
-              message: m,
-              createdAt: now,
-              expiresAt: now + 24 * 60 * 60 * 1000,
-              from: "me",
-              status: "active",
-              escalationLevel: 0,
-            },
-            ...prev,
-          ]);
-
-          setNudgeTitle("");
-          setNudgeMessage("");
-          setModalOpen(false);
-  }}
+              message: nudgeMessage,
+            });
+            await loadNudges(true);
+            setNudgeTitle("");
+            setNudgeMessage("");
+            setModalOpen(false);
+          } catch (error) {
+            Alert.alert(
+              "Nudge error",
+              error instanceof Error ? error.message : "Could not send this nudge."
+            );
+          }
+        }}
       />
     </Screen>
   );
