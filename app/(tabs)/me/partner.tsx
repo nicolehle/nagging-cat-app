@@ -29,7 +29,7 @@ export default function PartnerConnection() {
 
   const isPaired = pairing?.status === "paired";
   const isPending = pairing?.status === "pending";
-  const pairCode = pairing?.inviteCode ?? "Not created";
+  const pairCode = pairing?.inviteCode ?? (isPaired ? "Hidden" : "Not created");
   const statusTitle = loading
     ? "Loading pairing"
     : isPaired
@@ -89,6 +89,8 @@ export default function PartnerConnection() {
           <Txt variant="muted" style={styles.metaHint}>
             {pairing?.inviteCode
               ? "Share this code to connect your partner or reconnect later."
+              : isPaired
+                ? "Invite codes are hidden and invalidated once pairing is complete."
               : "Create a code to invite your partner."}
           </Txt>
 

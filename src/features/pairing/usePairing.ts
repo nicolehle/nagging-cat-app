@@ -26,6 +26,7 @@ export function usePairing() {
       setPairing(nextPairing);
       return nextPairing;
     } catch (err) {
+      console.error("[pairing] refresh hook failed", err);
       setError(err instanceof Error ? err.message : "Could not load pairing.");
       return null;
     } finally {
@@ -45,9 +46,14 @@ export function usePairing() {
     try {
       const nextPairing = await createInvitePair();
       setPairing(nextPairing);
-      setSuccess("Invite code ready to share.");
+      setSuccess(
+        nextPairing?.inviteCode
+          ? "Invite code ready to share."
+          : "Pair row found, but invite code is still missing."
+      );
       return nextPairing;
     } catch (err) {
+      console.error("[pairing] create invite hook failed", err);
       setError(err instanceof Error ? err.message : "Could not create an invite code.");
       return null;
     } finally {
@@ -67,6 +73,7 @@ export function usePairing() {
       setSuccess("Partner connected.");
       return refreshed;
     } catch (err) {
+      console.error("[pairing] join hook failed", err);
       setError(err instanceof Error ? err.message : "Could not join that invite code.");
       return null;
     } finally {
@@ -85,6 +92,7 @@ export function usePairing() {
       setSuccess("Disconnected successfully.");
       return nextPairing;
     } catch (err) {
+      console.error("[pairing] disconnect hook failed", err);
       setError(err instanceof Error ? err.message : "Could not disconnect.");
       return null;
     } finally {
