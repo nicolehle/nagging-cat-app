@@ -1,12 +1,13 @@
 import { router } from "expo-router";
 import { useState } from "react";
 import { ChevronRight, LogOut } from "lucide-react-native";
-import { StyleSheet, View } from "react-native";
+import { ScrollView, StyleSheet, View } from "react-native";
 
 import { usePairing } from "@/src/features/pairing/usePairing";
 import { tokens } from "@/src/theme/tokens";
 import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
+import { Chip } from "@/src/ui/Chip";
 import { Input } from "@/src/ui/Input";
 import { Screen } from "@/src/ui/Screen";
 import { ScreenHeader } from "@/src/ui/ScreenHeader";
@@ -24,225 +25,226 @@ export default function PartnerConnection() {
     createInvite,
     joinByCode,
     disconnect,
-    refresh,
   } = usePairing();
 
-  const isPaired = pairing?.status === "paired";
+  const isPaired = pairing?.isPaired ?? false;
   const isPending = pairing?.status === "pending";
+  const connectedName = pairing?.partnerName ?? "Partner";
   const pairCode = pairing?.inviteCode ?? (isPaired ? "Hidden" : "Not created");
   const statusTitle = loading
     ? "Loading pairing"
     : isPaired
-      ? "Connected with your partner"
+      ? `Connected with ${connectedName}`
       : isPending
         ? "Waiting for your partner"
         : "Not paired yet";
   const statusBody = loading
     ? "Checking Supabase for your current pair."
     : isPaired
-      ? "This pair is active and ready to keep sharing nudges."
+      ? `${connectedName} is connected and ready to keep sharing nudges.`
       : isPending
-        ? "Share your invite code or enter your partner's code below."
-        : "Create an invite code or enter your partner's code to connect.";
+        ? "Your invite is open. Share the code below or wait for them to join."
+        : "Create a code to invite someone or join with a code they sent you.";
 
   return (
-    <Screen style={styles.screen}>
+    <Screen style={styles.screen} keyboardAvoiding>
       <ScreenHeader
-        icon="💑"
+        icon="🤝"
         title="Partner"
-        subtitle="Connection details"
-        iconBg={tokens.colors.secondary}
+        subtitle="Connection details without extra fluff."
+        eyebrow="Pairing"
       />
 
-      <View style={styles.body}>
-        <Card>
-          <View style={styles.row}>
-            <View style={styles.avatar}>
-              <Txt variant="h2">💑</Txt>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
+        <View style={styles.body}>
+          <Card style={styles.statusCard}>
+            <View style={styles.row}>
+              <View style={styles.avatar}>
+                <Txt variant="h2">🐱</Txt>
+              </View>
+
+              <View style={styles.statusCopy}>
+                <Txt variant="bodyStrong">{statusTitle}</Txt>
+                <Txt variant="meta">{statusBody}</Txt>
+              </View>
+
+              <ChevronRight size={20} color={tokens.colors.textTertiary} />
             </View>
 
-            <View style={{ flex: 1 }}>
-              <Txt variant="body" style={{ color: tokens.colors.anchor }}>
-                {statusTitle}
-              </Txt>
-              <Txt variant="muted" style={{ opacity: 0.6, color: tokens.colors.anchor }}>
-                {statusBody}
-              </Txt>
-            </View>
-
-            <ChevronRight size={20} color={"rgba(64,60,61,0.40)"} />
-          </View>
-
-          <View style={styles.divider} />
-
-          <View style={styles.metaRow}>
-            <Txt variant="muted" style={styles.metaLabel}>
-              Pair Code
-            </Txt>
-            <View style={styles.codePill}>
-              <Txt variant="label" style={{ color: tokens.colors.anchor }}>
-                {pairCode}
-              </Txt>
-            </View>
-          </View>
-
-          <Txt variant="muted" style={styles.metaHint}>
-            {pairing?.inviteCode
-              ? "Share this code to connect your partner or reconnect later."
-              : isPaired
-                ? "Invite codes are hidden and invalidated once pairing is complete."
-              : "Create a code to invite your partner."}
-          </Txt>
-
-          {error ? (
-            <Txt variant="muted" style={styles.errorText}>
-              {error}
-            </Txt>
-          ) : null}
-          {success ? (
-            <Txt variant="muted" style={styles.successText}>
-              {success}
-            </Txt>
-          ) : null}
-        </Card>
-
-        <View style={{ height: 16 }} />
-
-        <Card>
-          <View style={styles.formWrap}>
-            <Input
-              label="Partner invite code"
-              hint="Paste the code exactly as shared. Spaces are trimmed automatically."
-              value={inviteInput}
-              autoCapitalize="characters"
-              autoCorrect={false}
-              onChangeText={setInviteInput}
-              placeholder="CAT-1234"
-            />
-
-            <View style={styles.buttonRow}>
-              <Button
-                label={pairing?.inviteCode ? "Show Code" : "Create Code"}
-                onPress={() => {
-                  createInvite().then(() => {});
-                }}
-                loading={actionLoading === "create"}
-                variant="ghost"
-                style={styles.halfButton}
-              />
-              <Button
-                label="Join Pair"
-                onPress={() => {
-                  joinByCode(inviteInput).then((nextPairing) => {
-                    if (nextPairing) {
-                      setInviteInput("");
-                    }
-                  });
-                }}
-                loading={actionLoading === "join"}
-                disabled={!inviteInput.trim()}
-                style={styles.halfButton}
+            <View style={styles.statusChips}>
+              <Chip
+                label={isPaired ? "Connected" : isPending ? "Pending" : "Not paired"}
+                tone={isPaired ? "success" : isPending ? "accent" : "neutral"}
               />
             </View>
 
-            <Button
-              label="Refresh Pairing"
-              onPress={() => {
-                refresh().then(() => {});
-              }}
-              loading={loading && actionLoading == null}
-              variant="secondary"
-            />
-          </View>
-        </Card>
+            {error ? (
+              <Txt variant="caption" style={styles.errorText}>
+                {error}
+              </Txt>
+            ) : null}
+            {success ? (
+              <Txt variant="caption" style={styles.successText}>
+                {success}
+              </Txt>
+            ) : null}
+          </Card>
 
-        <View style={{ height: 16 }} />
+          {!isPaired ? (
+            <>
+              <Card>
+                <View style={styles.formWrap}>
+                  <View style={styles.formHeader}>
+                    <Txt variant="h2">Create invite code</Txt>
+                    <Txt variant="meta">
+                      Share this with the person you want to pair with.
+                    </Txt>
+                  </View>
 
-        {pairing?.status !== "unpaired" ? (
-          <>
+                  <View style={styles.codeBlock}>
+                    <Txt variant="caption" style={styles.metaLabel}>
+                      Current invite code
+                    </Txt>
+                    <View style={styles.codePill}>
+                      <Txt variant="button" style={styles.codeText}>
+                        {pairCode}
+                      </Txt>
+                    </View>
+                  </View>
+
+                  <Button
+                    label={pairing?.inviteCode ? "Show code" : "Create code"}
+                    onPress={() => {
+                      createInvite().then(() => {});
+                    }}
+                    loading={actionLoading === "create"}
+                  />
+                </View>
+              </Card>
+
+              <Card>
+                <View style={styles.formWrap}>
+                  <View style={styles.formHeader}>
+                    <Txt variant="h2">Join with invite code</Txt>
+                    <Txt variant="meta">
+                      Enter the code someone shared with you to connect instantly.
+                    </Txt>
+                  </View>
+
+                  <Input
+                    label="Invite code"
+                    hint="Spaces are trimmed automatically."
+                    value={inviteInput}
+                    autoCapitalize="characters"
+                    autoCorrect={false}
+                    onChangeText={setInviteInput}
+                    placeholder="CAT-1234"
+                  />
+
+                  <Button
+                    label="Join pair"
+                    onPress={() => {
+                      joinByCode(inviteInput).then((nextPairing) => {
+                        if (nextPairing) {
+                          setInviteInput("");
+                        }
+                      });
+                    }}
+                    loading={actionLoading === "join"}
+                    disabled={!inviteInput.trim()}
+                  />
+                </View>
+              </Card>
+            </>
+          ) : null}
+
+          {isPaired ? (
             <Card style={styles.cardTight}>
               <SettingButton
-                icon={<LogOut size={20} color={"#d4183d"} />}
-                label="Disconnect Partner"
-                description="Remove only your side of this pair"
+                icon={<LogOut size={20} color={tokens.colors.alert} strokeWidth={2} />}
+                label="Disconnect"
+                description={`Remove only your side of the connection with ${connectedName}.`}
                 destructive
                 onPress={() => {
                   disconnect().then(() => {});
                 }}
               />
             </Card>
+          ) : null}
 
-            <View style={{ height: 16 }} />
-          </>
-        ) : null}
-
-        <SettingButton
-          icon={<ChevronRight size={20} color={tokens.colors.primary} />}
-          label="Back"
-          description="Return to settings"
-          onPress={() => router.back()}
-        />
-      </View>
+          <Card variant="inner" style={styles.backCard}>
+            <SettingButton
+              icon={<ChevronRight size={20} color={tokens.colors.primary} strokeWidth={2} />}
+              label="Back"
+              description="Return to settings."
+              onPress={() => router.back()}
+            />
+          </Card>
+        </View>
+      </ScrollView>
     </Screen>
   );
 }
 
 const styles = StyleSheet.create({
   screen: { paddingHorizontal: 0, paddingTop: 0 },
-  body: { paddingHorizontal: tokens.space.xl },
-
+  scroll: { paddingBottom: 24 },
+  body: { paddingHorizontal: tokens.space.xl, gap: 16 },
+  statusCard: {
+    gap: 12,
+  },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: tokens.radius.pill,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: tokens.colors.primary,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: "rgba(64,60,61,0.10)",
-    marginVertical: 12,
-  },
-  metaRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  metaLabel: { color: tokens.colors.anchor, opacity: 0.6 },
-  codePill: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: tokens.radius.pill,
-    backgroundColor: tokens.colors.cardInner,
+    backgroundColor: "#E7F7FB",
     borderWidth: 1,
-    borderColor: tokens.colors.border,
+    borderColor: "#CFEAF1",
   },
-  metaHint: {
-    marginTop: 10,
-    color: tokens.colors.anchor,
-    opacity: 0.6,
+  statusCopy: {
+    flex: 1,
+    gap: 2,
+  },
+  statusChips: {
+    flexDirection: "row",
+  },
+  formHeader: {
+    gap: 4,
   },
   formWrap: {
     gap: 14,
   },
-  buttonRow: {
-    flexDirection: "row",
-    gap: 12,
+  codeBlock: {
+    gap: 8,
   },
-  halfButton: {
-    flex: 1,
+  metaLabel: { color: tokens.colors.textTertiary },
+  codePill: {
+    paddingHorizontal: 14,
+    paddingVertical: 14,
+    borderRadius: 18,
+    backgroundColor: tokens.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    alignItems: "center",
+  },
+  codeText: {
+    color: tokens.colors.textPrimary,
   },
   errorText: {
-    marginTop: 10,
-    color: "#d4183d",
-    opacity: 1,
+    color: tokens.colors.alert,
   },
   successText: {
-    marginTop: 10,
-    color: tokens.colors.primary,
-    opacity: 1,
+    color: tokens.colors.success,
   },
   cardTight: { paddingVertical: 6 },
+  backCard: {
+    padding: 8,
+  },
 });

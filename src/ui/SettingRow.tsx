@@ -21,11 +21,11 @@ export function SettingRow({
     <View style={styles.row}>
       <View style={styles.iconWrap}>{icon}</View>
 
-      <View style={{ flex: 1 }}>
-        <Txt variant="body" style={styles.label}>
+      <View style={styles.copy}>
+        <Txt variant="bodyStrong" style={styles.label}>
           {label}
         </Txt>
-        <Txt variant="muted" style={styles.desc}>
+        <Txt variant="meta" style={styles.desc}>
           {description}
         </Txt>
       </View>
@@ -39,20 +39,28 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   iconWrap: {
-    width: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: tokens.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+  },
+  copy: {
+    flex: 1,
+    gap: 2,
   },
   label: {
-    color: tokens.colors.anchor,
+    color: tokens.colors.textPrimary,
   },
   desc: {
-    color: tokens.colors.anchor,
-    opacity: 0.6,
+    color: tokens.colors.textSecondary,
   },
 });

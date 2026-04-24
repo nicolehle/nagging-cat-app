@@ -36,7 +36,7 @@ export function FavoriteEmojiRow({
           })}
 
           <Pressable onPress={onPressMore} style={[styles.pill, styles.morePill]}>
-            <Txt variant="h3" style={{ color: tokens.colors.anchor }}>
+            <Txt variant="h3" style={styles.moreText}>
               +
             </Txt>
           </Pressable>
@@ -56,23 +56,26 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   pill: {
-    width: 44,
-    height: 44,
+    width: 46,
+    height: 46,
     borderRadius: tokens.radius.pill,
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 1,
   },
   pillIdle: {
-    backgroundColor: tokens.colors.cardInner,
+    backgroundColor: tokens.colors.surface,
     borderColor: tokens.colors.border,
   },
   pillSelected: {
-    backgroundColor: "rgba(235, 107, 77, 0.14)", // tinted primary
-    borderColor: "rgba(235, 107, 77, 0.25)",
+    backgroundColor: "#E7F7FB",
+    borderColor: "#BFE6EE",
   },
   morePill: {
-    backgroundColor: tokens.colors.bgTexture,
+    backgroundColor: tokens.colors.surfaceSubtle,
     borderColor: tokens.colors.border,
+  },
+  moreText: {
+    color: tokens.colors.textSecondary,
   },
 });

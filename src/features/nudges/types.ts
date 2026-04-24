@@ -1,4 +1,10 @@
-export type NudgeStatus = "active" | "done" | "escalated" | "expired" | "dismissed";
+export type NudgeStatus =
+  | "active"
+  | "evening_reminder"
+  | "final_warning"
+  | "done"
+  | "expired"
+  | "dismissed";
 
 export type Nudge = {
   id: string;

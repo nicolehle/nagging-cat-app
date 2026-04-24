@@ -17,22 +17,22 @@ export function SettingButton({
   destructive?: boolean;
   onPress?: () => void;
 }) {
-  const color = destructive ? "#d4183d" : tokens.colors.primary;
+  const color = destructive ? tokens.colors.alert : tokens.colors.textPrimary;
 
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.pressed]}>
       <View style={styles.iconWrap}>{icon}</View>
 
-      <View style={{ flex: 1 }}>
-        <Txt variant="body" style={[styles.label, destructive && { color }]}>
+      <View style={styles.copy}>
+        <Txt variant="bodyStrong" style={[styles.label, { color }]}>
           {label}
         </Txt>
-        <Txt variant="muted" style={styles.desc}>
+        <Txt variant="meta" style={styles.desc}>
           {description}
         </Txt>
       </View>
 
-      <ChevronRight size={20} color={tokens.colors.anchor} opacity={0.4} />
+      <ChevronRight size={20} color={tokens.colors.textTertiary} />
     </Pressable>
   );
 }
@@ -41,24 +41,32 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: tokens.radius.md,
+    gap: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderRadius: tokens.radius.lg,
   },
   pressed: {
-    backgroundColor: "rgba(64,60,61,0.03)",
+    backgroundColor: tokens.colors.surfaceSubtle,
   },
   iconWrap: {
-    width: 22,
+    width: 38,
+    height: 38,
+    borderRadius: 14,
     alignItems: "center",
     justifyContent: "center",
+    backgroundColor: tokens.colors.surfaceSubtle,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+  },
+  copy: {
+    flex: 1,
+    gap: 2,
   },
   label: {
-    color: tokens.colors.anchor,
+    color: tokens.colors.textPrimary,
   },
   desc: {
-    color: tokens.colors.anchor,
-    opacity: 0.6,
+    color: tokens.colors.textSecondary,
   },
 });

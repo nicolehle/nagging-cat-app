@@ -12,12 +12,20 @@ type PairRow = {
   user_b_id: string | null;
 };
 
+type UserRow = {
+  id: string;
+  name: string | null;
+};
+
 export type PairingState = {
+  isPaired: boolean;
   status: "unpaired" | "pending" | "paired";
   pairId: string | null;
   inviteCode: string | null;
   meId: string;
+  partnerId: string | null;
   partnerUserId: string | null;
+  partnerName: string | null;
 };
 
 const PAIR_SELECT = "id,invite_code,user_a_id,user_b_id";
@@ -64,23 +72,45 @@ async function findPairsForUser(userId: string) {
 function toPairingState(row: PairRow | null, meId: string): PairingState {
   if (!row) {
     return {
+      isPaired: false,
       status: "unpaired",
       pairId: null,
       inviteCode: null,
       meId,
+      partnerId: null,
       partnerUserId: null,
+      partnerName: null,
     };
   }
 
   const partnerUserId = row.user_a_id === meId ? row.user_b_id : row.user_a_id;
+  const isPaired = Boolean(partnerUserId);
 
   return {
-    status: partnerUserId ? "paired" : "pending",
+    isPaired,
+    status: isPaired ? "paired" : "pending",
     pairId: row.id,
-    inviteCode: partnerUserId ? null : row.invite_code?.trim() || null,
+    inviteCode: isPaired ? null : row.invite_code?.trim() || null,
     meId,
+    partnerId: partnerUserId,
     partnerUserId,
+    partnerName: null,
   };
+}
+
+async function getUserName(userId: string | null) {
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from("users")
+    .select("id,name")
+    .eq("id", userId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  const user = data as UserRow | null;
+  return user?.name?.trim() || null;
 }
 
 async function getCurrentPairRow(userId: string) {
@@ -155,12 +185,19 @@ export async function refreshPairingState() {
     const meId = await getCurrentUserId();
     const pair = await getCurrentPairRow(meId);
     await cachePairId(pair?.id ?? null);
+    const baseState = toPairingState(pair, meId);
+    const partnerName = await getUserName(baseState.partnerUserId);
     logPairing("pairing state refreshed", {
       meId,
       pairId: pair?.id ?? null,
       hasInviteCode: isNonEmptyInviteCode(pair?.invite_code),
+      partnerUserId: baseState.partnerUserId,
+      partnerName,
     });
-    return toPairingState(pair, meId);
+    return {
+      ...baseState,
+      partnerName,
+    };
   } catch (error) {
     logPairingError("failed to refresh pairing state", error);
     throw error;

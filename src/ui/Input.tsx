@@ -12,11 +12,11 @@ export function Input({ label, hint, style, ...props }: Props) {
     <View style={styles.wrap}>
       {label ? <Txt variant="label">{label}</Txt> : null}
       <TextInput
-        placeholderTextColor={tokens.colors.neutralSoft}
+        placeholderTextColor={tokens.colors.textTertiary}
         {...props}
         style={[styles.input, style]}
       />
-      {hint ? <Txt variant="muted">{hint}</Txt> : null}
+      {hint ? <Txt variant="caption">{hint}</Txt> : null}
     </View>
   );
 }
@@ -26,12 +26,14 @@ const styles = StyleSheet.create({
     gap: tokens.space.sm,
   },
   input: {
-    height: 48,
+    minHeight: 52,
     borderRadius: tokens.radius.lg,
     paddingHorizontal: tokens.space.lg,
-    backgroundColor: tokens.colors.cardInner,
+    paddingVertical: 14,
+    backgroundColor: tokens.colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: tokens.colors.border,
-    color: tokens.colors.anchor,
+    color: tokens.colors.textPrimary,
+    fontSize: 16,
   },
 });

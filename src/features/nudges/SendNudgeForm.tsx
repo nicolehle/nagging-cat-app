@@ -1,5 +1,6 @@
 import { FavoriteEmojiRow } from "@/src/features/nudges/FavoriteEmojiRow";
 import { tokens } from "@/src/theme/tokens";
+import { Card } from "@/src/ui/Card";
 import { Input } from "@/src/ui/Input";
 import { Txt } from "@/src/ui/Txt";
 import { StyleSheet, View } from "react-native";
@@ -23,53 +24,64 @@ export function SendNudgeForm({
 
   return (
     <View style={styles.wrap}>
-      <Txt variant="label">Pick an emoji</Txt>
-      <FavoriteEmojiRow value={emoji} onChange={onChangeEmoji} />
+      <Card variant="inner" style={styles.section}>
+        <View style={styles.sectionHead}>
+          <Txt variant="h2">Pick the vibe</Txt>
+          <Txt variant="meta">A tiny mascot moment, then straight into the reminder.</Txt>
+        </View>
+        <FavoriteEmojiRow value={emoji} onChange={onChangeEmoji} />
+      </Card>
 
-      <View style={{ height: tokens.space.md }} />
+      <Card variant="inner" style={styles.section}>
+        <View style={styles.sectionHead}>
+          <Txt variant="h2">Write the nudge</Txt>
+          <Txt variant="meta">Keep it cheeky, clear, and easy to scan.</Txt>
+        </View>
 
-      <Input
-        label="Title"
-        value={title}
-        onChangeText={onChangeTitle}
-        placeholder="Laundry reminder"
-      />
+        <Input
+          label="Title"
+          value={title}
+          onChangeText={onChangeTitle}
+          placeholder="Laundry reminder"
+        />
 
-      <View style={{ height: tokens.space.md }} />
+        <Input
+          label="Message"
+          value={message}
+          onChangeText={(v) => onChangeMessage(v.slice(0, max))}
+          placeholder="Quick little nudge so this one does not sneak away today."
+          multiline
+          style={styles.messageBox}
+        />
 
-      <Txt variant="label">Your message</Txt>
-      <Input
-        value={message}
-        onChangeText={(v) => onChangeMessage(v.slice(0, max))}
-        placeholder="Hey babe, just a gentle reminder..."
-        multiline
-        style={styles.messageBox}
-      />
-
-      <View style={styles.hintRow}>
-        <Txt variant="muted" style={{ opacity: 0.6 }}>
-          Keep it sweet and playful
-        </Txt>
-        <Txt variant="muted" style={{ opacity: 0.6 }}>
-          {message.length}/{max}
-        </Txt>
-      </View>
+        <View style={styles.hintRow}>
+          <Txt variant="caption">Gentle mischief wins over guilt trips.</Txt>
+          <Txt variant="caption">{message.length}/{max}</Txt>
+        </View>
+      </Card>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: {
-    gap: tokens.space.sm,
+    gap: tokens.space.md,
+  },
+  section: {
+    gap: tokens.space.md,
+    padding: tokens.space.lg,
+  },
+  sectionHead: {
+    gap: 4,
   },
   messageBox: {
-    height: 110,
+    height: 118,
     paddingTop: 14,
     textAlignVertical: "top",
   },
   hintRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    marginTop: 2,
   },
 });

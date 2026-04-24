@@ -26,14 +26,15 @@ export function Card({ variant = "surface", style, children, ...props }: Props) 
 const styles = StyleSheet.create({
   base: {
     borderRadius: tokens.radius.xl,
-    padding: tokens.space.lg,
+    padding: tokens.space.xl,
     borderWidth: 1,
     borderColor: tokens.colors.border,
+    ...tokens.shadow.card,
   },
   surface: {
-    backgroundColor: tokens.colors.cardSurface,
+    backgroundColor: tokens.colors.surface,
   },
   inner: {
-    backgroundColor: tokens.colors.cardInner,
+    backgroundColor: tokens.colors.surfaceSubtle,
   },
 });

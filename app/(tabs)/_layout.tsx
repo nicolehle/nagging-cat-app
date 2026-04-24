@@ -1,30 +1,26 @@
+import { fonts } from "@/src/theme/fonts";
 import { tokens } from "@/src/theme/tokens";
-import { Feather } from "@expo/vector-icons";
+import { House, Clock3, UserRound } from "lucide-react-native";
 import { Tabs } from "expo-router";
 
 export default function TabLayout() {
-  const active = tokens.colors.primary; // #EB6B4D
-  const inactive = "rgba(255,255,255,0.70)";
-
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-
-        tabBarActiveTintColor: active,
-        tabBarInactiveTintColor: inactive,
-
+        tabBarActiveTintColor: tokens.colors.primary,
+        tabBarInactiveTintColor: tokens.colors.textTertiary,
         tabBarLabelStyle: {
-          fontFamily: "Nunito_600SemiBold",
+          fontFamily: fonts.bodyMedium,
           fontSize: 12,
           marginTop: 2,
+          fontWeight: "600",
         },
-
         tabBarStyle: {
-          backgroundColor: tokens.colors.anchor, // dark
-          borderTopWidth: 0,
-
-          height: 64,
+          backgroundColor: tokens.colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: tokens.colors.border,
+          height: 68,
           paddingTop: 8,
           paddingBottom: 10,
         },
@@ -35,7 +31,7 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="home" size={size ?? 22} color={color} />
+            <House size={size ?? 22} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -44,7 +40,7 @@ export default function TabLayout() {
         options={{
           title: "History",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="clock" size={size ?? 22} color={color} />
+            <Clock3 size={size ?? 22} color={color} strokeWidth={2} />
           ),
         }}
       />
@@ -53,7 +49,7 @@ export default function TabLayout() {
         options={{
           title: "Me",
           tabBarIcon: ({ color, size }) => (
-            <Feather name="user" size={size ?? 22} color={color} />
+            <UserRound size={size ?? 22} color={color} strokeWidth={2} />
           ),
         }}
       />

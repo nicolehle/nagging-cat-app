@@ -43,7 +43,9 @@ export default function ChatBubble({
   const actor = event === "manual_escalate" ? "sender" : "system";
 
   const copy = getCatCopy(fakeTask, event, { actor, level });
-  const line = `${copy.emoji} ${copy.body}`;
+  const line = copy
+    ? `${copy.emoji ?? ""} ${copy.body ?? ""}`.trim()
+    : String(item.message ?? item.body ?? "").trim();
 
   return (
     <View

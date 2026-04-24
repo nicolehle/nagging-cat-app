@@ -1,8 +1,14 @@
+import { getCurrentLocalUserId } from "@/src/features/pairing/localUser";
+import {
+  deriveLifecycleStatus,
+  FINAL_WARNING_LEVEL,
+  getInitialNudgeSchedule,
+  getNextEscalateAtForLevel,
+  getNudgePolicyTimes,
+} from "@/src/features/nudges/policy";
 import { supabase } from "@/src/lib/supabase";
 import type { Nudge, NudgeStatus } from "@/src/features/nudges/types";
 
-const DAY_MS = 24 * 60 * 60 * 1000;
-const ESCALATE_DELAYS_MINS = [120, 480, 1200] as const;
 const DEFAULT_EMOJI = "📣";
 
 type NudgeRow = {
@@ -13,7 +19,8 @@ type NudgeRow = {
   escalation_level: number | null;
   created_at: string | null;
   expires_at: string | null;
-  sender_device: string | null;
+  from_user_id: string | null;
+  to_user_id: string | null;
   last_event: string | null;
   last_event_at: string | null;
   done_at: string | null;
@@ -21,9 +28,14 @@ type NudgeRow = {
   message: string | null;
 };
 
+type PairRow = {
+  id: string;
+  user_a_id: string | null;
+  user_b_id: string | null;
+};
+
 type SendNudgeInput = {
   pairId: string;
-  deviceName: string;
   title: string;
   emoji: string;
   message: string;
@@ -37,19 +49,6 @@ function requirePairId(pairId: string | null): string {
   return value;
 }
 
-function addMinutes(date: Date, mins: number) {
-  return new Date(date.getTime() + mins * 60_000);
-}
-
-function computeExpiresAt(now: Date) {
-  return new Date(now.getTime() + DAY_MS);
-}
-
-function computeNextEscalateAt(now: Date, newLevel: number): Date | null {
-  const delay = ESCALATE_DELAYS_MINS[newLevel];
-  return delay == null ? null : addMinutes(now, delay);
-}
-
 function toMillis(value: string | null, fallback: number) {
   if (!value) return fallback;
   const parsed = Date.parse(value);
@@ -57,23 +56,38 @@ function toMillis(value: string | null, fallback: number) {
 }
 
 function deriveRowStatus(row: NudgeRow): NudgeStatus {
-  if (row.status === "done") return "done";
-  if (row.last_event === "dismissed") return "dismissed";
+  const createdAt = toMillis(row.created_at, Date.now());
+  const expiresAt = toMillis(
+    row.expires_at,
+    getNudgePolicyTimes(new Date(createdAt)).expiresAt.getTime()
+  );
 
-  const expiresAt = toMillis(row.expires_at, toMillis(row.created_at, Date.now()) + DAY_MS);
-  if (Date.now() >= expiresAt || row.last_event === "expired") return "expired";
-
-  if ((row.escalation_level ?? 0) > 0 || row.last_event === "manual_escalate" || row.last_event === "auto_escalate") {
-    return "escalated";
-  }
-
-  return "active";
+  return deriveLifecycleStatus({
+    baseStatus: row.status,
+    lastEvent: row.last_event,
+    escalationLevel: row.escalation_level ?? 0,
+    expiresAt,
+  });
 }
 
-function mapRowToNudge(row: NudgeRow, deviceName: string): Nudge {
+function deriveOwnership(row: NudgeRow, meId: string): Nudge["from"] {
+  if (row.from_user_id && row.from_user_id === meId) {
+    return "me";
+  }
+
+  if (row.to_user_id && row.to_user_id === meId) {
+    return "partner";
+  }
+
+  return "partner";
+}
+
+function mapRowToNudge(row: NudgeRow, meId: string): Nudge {
   const createdAt = toMillis(row.created_at, Date.now());
-  const expiresAt = toMillis(row.expires_at, createdAt + DAY_MS);
-  const senderDevice = row.sender_device?.trim();
+  const expiresAt = toMillis(
+    row.expires_at,
+    getNudgePolicyTimes(new Date(createdAt)).expiresAt.getTime()
+  );
 
   return {
     id: row.id,
@@ -82,39 +96,53 @@ function mapRowToNudge(row: NudgeRow, deviceName: string): Nudge {
     message: row.message?.trim() || "",
     createdAt,
     expiresAt,
-    from: senderDevice && senderDevice === deviceName ? "me" : "partner",
+    from: deriveOwnership(row, meId),
     status: deriveRowStatus(row),
     escalationLevel: row.escalation_level ?? 0,
   };
 }
 
-async function fetchNudgesForPair(pairId: string, deviceName: string) {
+async function fetchNudgesForPair(pairId: string, meId: string) {
   const { data, error } = await supabase
     .from("nudges")
     .select(
-      "id,pair_id,title,status,escalation_level,created_at,expires_at,sender_device,last_event,last_event_at,done_at,emoji,message"
+      "id,pair_id,title,status,escalation_level,created_at,expires_at,from_user_id,to_user_id,last_event,last_event_at,done_at,emoji,message"
     )
     .eq("pair_id", pairId)
     .order("created_at", { ascending: false });
 
   if (error) throw error;
 
-  return ((data ?? []) as NudgeRow[]).map((row) => mapRowToNudge(row, deviceName));
+  return ((data ?? []) as NudgeRow[]).map((row) => mapRowToNudge(row, meId));
 }
 
-export async function fetchActiveNudges(pairId: string | null, deviceName: string) {
+export async function fetchActiveNudges(pairId: string | null) {
   const resolvedPairId = requirePairId(pairId);
-  const nudges = await fetchNudgesForPair(resolvedPairId, deviceName);
+  const meId = await getCurrentLocalUserId();
+  const nudges = await fetchNudgesForPair(resolvedPairId, meId);
   return nudges.filter((nudge) => nudge.status !== "done" && nudge.status !== "dismissed");
 }
 
-export async function fetchHistoryNudges(pairId: string | null, deviceName: string) {
+export async function fetchHistoryNudges(pairId: string | null) {
   const resolvedPairId = requirePairId(pairId);
-  const nudges = await fetchNudgesForPair(resolvedPairId, deviceName);
+  const meId = await getCurrentLocalUserId();
+  const nudges = await fetchNudgesForPair(resolvedPairId, meId);
   return nudges.filter(
     (nudge) =>
-      nudge.status === "done" || nudge.status === "escalated" || nudge.status === "dismissed"
+      nudge.status === "done" || nudge.status === "expired" || nudge.status === "dismissed"
   );
+}
+
+async function getPairParticipants(pairId: string) {
+  const { data, error } = await supabase
+    .from("pairs")
+    .select("id,user_a_id,user_b_id")
+    .eq("id", pairId)
+    .maybeSingle();
+
+  if (error) throw error;
+
+  return (data as PairRow | null) ?? null;
 }
 
 export async function sendNudge(input: SendNudgeInput) {
@@ -124,18 +152,32 @@ export async function sendNudge(input: SendNudgeInput) {
     throw new Error("Nudge title is required.");
   }
 
+  const meId = await getCurrentLocalUserId();
+  const pair = await getPairParticipants(pairId);
+  if (!pair) {
+    throw new Error("Could not find your pair. Refresh and try again.");
+  }
+
+  const partnerId =
+    pair.user_a_id === meId ? pair.user_b_id : pair.user_b_id === meId ? pair.user_a_id : null;
+  if (!partnerId) {
+    throw new Error("Connect with a partner before sending nudges.");
+  }
+
   const now = new Date();
-  const nextEscalateAt = computeNextEscalateAt(now, 0);
+  const schedule = getInitialNudgeSchedule(now);
   const { error } = await supabase.from("nudges").insert({
     pair_id: pairId,
     title,
     status: "pending",
-    escalation_level: 0,
-    sender_device: input.deviceName,
+    escalation_level: schedule.escalationLevel,
+    from_user_id: meId,
+    to_user_id: partnerId,
     last_event: "created",
     last_event_at: now.toISOString(),
-    expires_at: computeExpiresAt(now).toISOString(),
-    next_escalate_at: nextEscalateAt?.toISOString() ?? null,
+    remind_at: schedule.nextEscalateAt?.toISOString() ?? null,
+    expires_at: schedule.expiresAt.toISOString(),
+    next_escalate_at: schedule.nextEscalateAt?.toISOString() ?? null,
     emoji: input.emoji.trim() || DEFAULT_EMOJI,
     message: input.message.trim(),
   });
@@ -152,6 +194,7 @@ export async function markDone(id: string) {
       done_at: nowIso,
       last_event: "done",
       last_event_at: nowIso,
+      remind_at: null,
       next_escalate_at: null,
     })
     .eq("id", id);
@@ -160,9 +203,13 @@ export async function markDone(id: string) {
 }
 
 export async function escalate(id: string, currentLevel: number) {
+  if (currentLevel >= FINAL_WARNING_LEVEL) {
+    throw new Error("This nudge is already at the final warning level.");
+  }
+
   const now = new Date();
-  const nextLevel = Math.min(currentLevel + 1, 10);
-  const nextEscalateAt = computeNextEscalateAt(now, nextLevel);
+  const nextLevel = Math.min(currentLevel + 1, FINAL_WARNING_LEVEL);
+  const nextEscalateAt = getNextEscalateAtForLevel(nextLevel, now);
 
   const { error } = await supabase
     .from("nudges")
@@ -170,6 +217,7 @@ export async function escalate(id: string, currentLevel: number) {
       escalation_level: nextLevel,
       last_event: "manual_escalate",
       last_event_at: now.toISOString(),
+      remind_at: nextEscalateAt?.toISOString() ?? null,
       next_escalate_at: nextEscalateAt?.toISOString() ?? null,
     })
     .eq("id", id);
@@ -182,8 +230,10 @@ export async function dismiss(id: string) {
   const { error } = await supabase
     .from("nudges")
     .update({
+      status: "dismissed",
       last_event: "dismissed",
       last_event_at: nowIso,
+      remind_at: null,
       next_escalate_at: null,
     })
     .eq("id", id);
@@ -193,7 +243,10 @@ export async function dismiss(id: string) {
 
 export async function renewExpiredNudge(id: string) {
   const now = new Date();
-  const nextEscalateAt = computeNextEscalateAt(now, 0);
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  tomorrow.setHours(0, 0, 0, 0);
+  const policyTimes = getNudgePolicyTimes(tomorrow);
 
   const { error } = await supabase
     .from("nudges")
@@ -203,8 +256,9 @@ export async function renewExpiredNudge(id: string) {
       last_event: "renewed",
       last_event_at: now.toISOString(),
       done_at: null,
-      expires_at: computeExpiresAt(now).toISOString(),
-      next_escalate_at: nextEscalateAt?.toISOString() ?? null,
+      remind_at: policyTimes.softReminderAt.toISOString(),
+      expires_at: policyTimes.expiresAt.toISOString(),
+      next_escalate_at: policyTimes.softReminderAt.toISOString(),
     })
     .eq("id", id);
 

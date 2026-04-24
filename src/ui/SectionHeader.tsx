@@ -5,10 +5,10 @@ import { StyleSheet, View } from "react-native";
 export function SectionHeader({ title, count }: { title: string; count?: number }) {
   return (
     <View style={styles.wrap}>
-      <Txt variant="h3">{title}</Txt>
+      <Txt variant="h2">{title}</Txt>
       {typeof count === "number" ? (
         <View style={styles.badge}>
-          <Txt variant="label" style={styles.badgeText}>
+          <Txt variant="caption" style={styles.badgeText}>
             {count}
           </Txt>
         </View>
@@ -22,21 +22,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 8,
-    paddingTop: 6,
-    paddingBottom: 6,
+    paddingTop: 10,
+    paddingBottom: 8,
   },
   badge: {
-    minWidth: 26,
-    height: 22,
+    minWidth: 28,
+    height: 24,
     paddingHorizontal: 8,
     borderRadius: tokens.radius.pill,
-    backgroundColor: tokens.colors.cardInner,
+    backgroundColor: tokens.colors.surfaceSubtle,
     borderWidth: 1,
     borderColor: tokens.colors.border,
     alignItems: "center",
     justifyContent: "center",
   },
   badgeText: {
-    color: tokens.colors.anchor,
+    color: tokens.colors.textSecondary,
   },
 });

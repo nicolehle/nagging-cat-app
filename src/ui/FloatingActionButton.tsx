@@ -1,13 +1,11 @@
 import { tokens } from "@/src/theme/tokens";
-import { Txt } from "@/src/ui/Txt";
+import { Plus } from "lucide-react-native";
 import { Pressable, StyleSheet } from "react-native";
 
 export function FloatingActionButton({ onPress }: { onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} style={styles.fab}>
-      <Txt variant="h2" style={styles.plus}>
-        +
-      </Txt>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.fab, pressed && styles.pressed]}>
+      <Plus size={24} color={tokens.colors.white} strokeWidth={2} />
     </Pressable>
   );
 }
@@ -15,18 +13,21 @@ export function FloatingActionButton({ onPress }: { onPress: () => void }) {
 const styles = StyleSheet.create({
   fab: {
     position: "absolute",
-    right: 18,
-    bottom: 18, // normal tabs: keep it close to bottom
-    width: 64,
-    height: 64,
-    borderRadius: 999,
+    right: 20,
+    bottom: 20,
+    width: 60,
+    height: 60,
+    borderRadius: tokens.radius.pill,
     backgroundColor: tokens.colors.primary,
     alignItems: "center",
     justifyContent: "center",
-    elevation: 8,
+    shadowColor: "#163330",
+    shadowOpacity: 0.14,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
-  plus: {
-    color: "#fff",
-    lineHeight: 28,
+  pressed: {
+    backgroundColor: tokens.colors.primaryPressed,
   },
 });

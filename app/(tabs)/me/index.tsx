@@ -3,8 +3,12 @@ import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { usePairing } from "@/src/features/pairing/usePairing";
+import { useProfileName } from "@/src/features/pairing/useProfileName";
 import { tokens } from "@/src/theme/tokens";
+import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
+import { Chip } from "@/src/ui/Chip";
+import { Input } from "@/src/ui/Input";
 import { Screen } from "@/src/ui/Screen";
 import { ScreenHeader } from "@/src/ui/ScreenHeader";
 import { Txt } from "@/src/ui/Txt";
@@ -26,37 +30,101 @@ export default function Me() {
   const [autoEscalate, setAutoEscalate] = useState(true);
   const [useGiphy, setUseGiphy] = useState(false);
   const { pairing, loading, error } = usePairing();
+  const {
+    name,
+    setName,
+    loading: profileLoading,
+    saving: profileSaving,
+    error: profileError,
+    success: profileSuccess,
+    saveName,
+  } = useProfileName();
+
+  const connectedName = pairing?.partnerName ?? "Partner";
 
   const partnerSummary = loading
     ? "Checking your pair..."
-    : pairing?.status === "paired"
-      ? "Connected with your partner"
+    : pairing?.isPaired
+      ? `Connected with ${connectedName}`
       : pairing?.status === "pending"
         ? `Invite code: ${pairing.inviteCode ?? "Unavailable"}`
         : "Not connected yet";
 
   const partnerLabel = loading
     ? "Partner status"
-    : pairing?.status === "paired"
+    : pairing?.isPaired
       ? "Connected with"
       : pairing?.status === "pending"
         ? "Waiting for partner"
         : "Ready to pair";
 
   return (
-    <Screen style={styles.screen}>
-      <ScrollView contentContainerStyle={styles.scroll}>
+    <Screen style={styles.screen} keyboardAvoiding>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+      >
         <ScreenHeader
-          icon="👤"
+          icon="⚙️"
           title="Settings"
-          subtitle="Customize your NagCat experience"
-          iconBg={tokens.colors.accent}
+          subtitle="Clean controls, light accents, no extra fuss."
+          eyebrow="Profile"
         />
 
         <View style={styles.body}>
+          <Card style={styles.heroCard}>
+            <Txt variant="h2">Cute, but capable.</Txt>
+            <Txt variant="meta">
+              Tidy up your profile, pairing, and reminder preferences from one calm control panel.
+            </Txt>
+            <View style={styles.heroChips}>
+              <Chip label={notifications ? "Notifications on" : "Notifications off"} active={notifications} />
+              <Chip label={quietMode ? "Quiet mode" : "Always ready"} tone="accent" />
+            </View>
+          </Card>
+
           <View>
             <Txt variant="label" style={styles.sectionLabel}>
-              Partner Connection
+              Profile
+            </Txt>
+
+            <Card>
+              <View style={styles.formWrap}>
+                <Input
+                  label="Your name"
+                  hint="This is the name your paired person will see."
+                  value={profileLoading ? "" : name}
+                  onChangeText={setName}
+                  placeholder="Enter your name or nickname"
+                />
+
+                <Button
+                  label="Save name"
+                  onPress={() => {
+                    saveName(name).then(() => {});
+                  }}
+                  loading={profileSaving}
+                  disabled={!name.trim()}
+                />
+
+                {profileError ? (
+                  <Txt variant="caption" style={styles.errorText}>
+                    {profileError}
+                  </Txt>
+                ) : null}
+                {profileSuccess ? (
+                  <Txt variant="caption" style={styles.successText}>
+                    {profileSuccess}
+                  </Txt>
+                ) : null}
+              </View>
+            </Card>
+          </View>
+
+          <View>
+            <Txt variant="label" style={styles.sectionLabel}>
+              Partner connection
             </Txt>
 
             <Card>
@@ -65,24 +133,20 @@ export default function Me() {
                 style={({ pressed }) => [styles.partnerRow, pressed && styles.pressedRow]}
               >
                 <View style={styles.partnerAvatar}>
-                  <Txt variant="h2">💑</Txt>
+                  <Txt variant="h2">🐱</Txt>
                 </View>
 
-                <View style={{ flex: 1 }}>
-                  <Txt variant="body" style={{ color: tokens.colors.anchor }}>
-                    {partnerLabel}
-                  </Txt>
-                  <Txt variant="muted" style={{ opacity: 0.6, color: tokens.colors.anchor }}>
-                    {partnerSummary}
-                  </Txt>
+                <View style={styles.partnerCopy}>
+                  <Txt variant="bodyStrong">{partnerLabel}</Txt>
+                  <Txt variant="meta">{partnerSummary}</Txt>
                   {error ? (
-                    <Txt variant="muted" style={styles.errorText}>
+                    <Txt variant="caption" style={styles.errorText}>
                       {error}
                     </Txt>
                   ) : null}
                 </View>
 
-                <ChevronRight size={20} color={"rgba(64,60,61,0.40)"} />
+                <ChevronRight size={20} color={tokens.colors.textTertiary} />
               </Pressable>
             </Card>
           </View>
@@ -94,17 +158,17 @@ export default function Me() {
 
             <Card style={styles.cardTight}>
               <SettingRow
-                icon={<Bell size={20} color={tokens.colors.primary} />}
-                label="Push Notifications"
-                description="Get notified when you receive nudges"
+                icon={<Bell size={20} color={tokens.colors.primary} strokeWidth={2} />}
+                label="Push notifications"
+                description="Get notified when you receive nudges."
                 value={notifications}
                 onChange={setNotifications}
               />
               <View style={styles.divider} />
               <SettingRow
-                icon={<Moon size={20} color={tokens.colors.primary} />}
-                label="Quiet Mode"
-                description="Mute notifications from 10PM to 8AM"
+                icon={<Moon size={20} color={tokens.colors.primary} strokeWidth={2} />}
+                label="Quiet mode"
+                description="Mute notifications from 10 PM to 8 AM."
                 value={quietMode}
                 onChange={setQuietMode}
               />
@@ -118,9 +182,9 @@ export default function Me() {
 
             <Card style={styles.cardTight}>
               <SettingRow
-                icon={<Zap size={20} color={tokens.colors.primary} />}
-                label="Auto-Escalate"
-                description="Escalate nudges after 6 hours"
+                icon={<Zap size={20} color={tokens.colors.primary} strokeWidth={2} />}
+                label="Auto-escalate"
+                description="Use evening reminder checkpoints."
                 value={autoEscalate}
                 onChange={setAutoEscalate}
               />
@@ -134,9 +198,9 @@ export default function Me() {
 
             <Card style={styles.cardTight}>
               <SettingRow
-                icon={<Sparkles size={20} color={tokens.colors.primary} />}
-                label="GIPHY Stickers"
-                description="Use fun GIF stickers instead of Lottie"
+                icon={<Sparkles size={20} color={tokens.colors.primary} strokeWidth={2} />}
+                label="GIPHY stickers"
+                description="Use fun GIF stickers instead of Lottie."
                 value={useGiphy}
                 onChange={setUseGiphy}
               />
@@ -150,20 +214,20 @@ export default function Me() {
 
             <Card style={styles.cardTight}>
               <SettingButton
-                icon={<Heart size={20} color={tokens.colors.primary} />}
+                icon={<Heart size={20} color={tokens.colors.primary} strokeWidth={2} />}
                 label="Share NagCat"
-                description="Spread the love"
+                description="Spread the love."
                 onPress={() => {}}
               />
             </Card>
           </View>
 
           <View style={styles.footer}>
-            <Txt variant="muted" style={styles.footerText}>
+            <Txt variant="caption" style={styles.footerText}>
               NagCat v1.0.0
             </Txt>
-            <Txt variant="muted" style={styles.footerText}>
-              Made with 💕 for couples who care
+            <Txt variant="caption" style={styles.footerText}>
+              Made with care for couples who care
             </Txt>
           </View>
         </View>
@@ -182,11 +246,19 @@ const styles = StyleSheet.create({
   },
   body: {
     paddingHorizontal: tokens.space.xl,
-    gap: 16,
+    gap: 18,
+  },
+  heroCard: {
+    gap: 8,
+  },
+  heroChips: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 4,
   },
   sectionLabel: {
-    color: tokens.colors.anchor,
-    opacity: 0.6,
+    color: tokens.colors.textSecondary,
     marginBottom: 8,
     paddingHorizontal: 4,
   },
@@ -195,23 +267,30 @@ const styles = StyleSheet.create({
   },
   divider: {
     height: 1,
-    backgroundColor: "rgba(64,60,61,0.10)",
-    marginHorizontal: 14,
-    marginVertical: 10,
+    backgroundColor: tokens.colors.border,
+    marginHorizontal: 16,
+  },
+  formWrap: {
+    gap: 14,
   },
   partnerRow: {
     flexDirection: "row",
     alignItems: "center",
     gap: 12,
-    padding: 8,
   },
   partnerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: tokens.radius.pill,
+    width: 52,
+    height: 52,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: tokens.colors.primary,
+    backgroundColor: "#E7F7FB",
+    borderWidth: 1,
+    borderColor: "#CFEAF1",
+  },
+  partnerCopy: {
+    flex: 1,
+    gap: 2,
   },
   footer: {
     alignItems: "center",
@@ -219,16 +298,17 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   footerText: {
-    color: tokens.colors.anchor,
-    opacity: 0.4,
+    color: tokens.colors.textTertiary,
   },
   errorText: {
-    color: "#d4183d",
-    opacity: 1,
+    color: tokens.colors.alert,
+    marginTop: 4,
+  },
+  successText: {
+    color: tokens.colors.success,
     marginTop: 4,
   },
   pressedRow: {
-    backgroundColor: "rgba(64,60,61,0.03)",
-    borderRadius: tokens.radius.md,
+    opacity: 0.9,
   },
 });

@@ -31,18 +31,21 @@ export function Button({
         styles.base,
         variantStyles[variant],
         isDisabled && styles.disabled,
-        pressed && !isDisabled && styles.pressed,
+        pressed && !isDisabled && variantPressedStyles[variant],
         style,
       ]}
     >
       {loading ? (
-        <ActivityIndicator />
+        <ActivityIndicator
+          color={variant === "primary" ? tokens.colors.white : tokens.colors.textPrimary}
+        />
       ) : (
         <Txt
-          variant="label"
+          variant="button"
           style={[
             styles.label,
-            variant === "ghost" ? styles.labelGhost : styles.labelSolid,
+            variant === "primary" ? styles.labelPrimary : styles.labelSecondary,
+            variant === "ghost" && styles.labelGhost,
           ]}
         >
           {label}
@@ -54,43 +57,53 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    height: 48,
-    borderRadius: tokens.radius.pill,
+    minHeight: 52,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: tokens.space.xl,
+    paddingHorizontal: tokens.space.xxl,
+    paddingVertical: 14,
     borderWidth: 1,
-  },
-  pressed: {
-    transform: [{ scale: 0.99 }],
-    opacity: 0.95,
   },
   disabled: {
     opacity: 0.55,
   },
-
-  label: {
-    // Txt handles fontFamily + size; we just tweak color here
-  },
-  labelSolid: {
+  label: {},
+  labelPrimary: {
     color: tokens.colors.white,
   },
+  labelSecondary: {
+    color: tokens.colors.textPrimary,
+  },
   labelGhost: {
-    color: tokens.colors.anchor,
+    color: tokens.colors.primary,
   },
 });
 
 const variantStyles = StyleSheet.create({
   primary: {
     backgroundColor: tokens.colors.primary,
-    borderColor: "transparent",
+    borderColor: tokens.colors.primary,
   },
   secondary: {
-    backgroundColor: tokens.colors.secondary,
-    borderColor: "transparent",
+    backgroundColor: tokens.colors.surfaceSubtle,
+    borderColor: tokens.colors.border,
   },
   ghost: {
     backgroundColor: "transparent",
-    borderColor: tokens.colors.borderStrong,
+    borderColor: "transparent",
+  },
+});
+
+const variantPressedStyles = StyleSheet.create({
+  primary: {
+    backgroundColor: tokens.colors.primaryPressed,
+    borderColor: tokens.colors.primaryPressed,
+  },
+  secondary: {
+    backgroundColor: "#E3F0EE",
+  },
+  ghost: {
+    opacity: 0.75,
   },
 });

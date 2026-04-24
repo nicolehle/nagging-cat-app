@@ -4,9 +4,10 @@ import { Nudge } from "@/src/features/nudges/types";
 function rank(status: Nudge["status"]) {
   // lower = higher on screen
   if (status === "active") return 0;
-  if (status === "escalated") return 1;
-  if (status === "expired") return 2;
-  return 3; // done (not usually shown on Home)
+  if (status === "evening_reminder") return 1;
+  if (status === "final_warning") return 2;
+  if (status === "expired") return 3;
+  return 4; // done/dismissed are not usually shown on Home
 }
 
 export function sortForHome(a: Nudge, b: Nudge) {

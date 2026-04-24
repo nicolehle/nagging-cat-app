@@ -2,7 +2,13 @@ import { deriveStatus } from "@/src/features/nudges/status";
 import { Nudge } from "@/src/features/nudges/types";
 
 export type CardVariant = "home" | "history";
-export type CardStatus = "active" | "done" | "escalated" | "expired" | "dismissed";
+export type CardStatus =
+  | "active"
+  | "evening_reminder"
+  | "final_warning"
+  | "done"
+  | "expired"
+  | "dismissed";
 
 export type NudgeCardModel = {
   id: string;
@@ -14,7 +20,7 @@ export type NudgeCardModel = {
   from: "me" | "partner";
 
   status: CardStatus;
-  statusLabel: string; // "2h left" / "Done" / "Expired" / "Escalated!"
+  statusLabel: string; // "2h left" / "Done" / "Expired" / "Final warning"
   escalationLevel?: number; // optional display
 };
 
