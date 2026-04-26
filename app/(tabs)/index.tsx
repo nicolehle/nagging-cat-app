@@ -1,31 +1,31 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, StyleSheet, View } from "react-native";
 import { useFocusEffect } from "@react-navigation/native";
+import { Image } from "expo-image";
+import { router } from "expo-router";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { Alert, FlatList, Pressable, StyleSheet, View } from "react-native";
 
 import {
   dismiss,
+  escalate,
   fetchActiveNudges,
   markDone,
   renewExpiredNudge,
-  sendNudge,
-  escalate,
 } from "@/src/features/nudges/api";
-import { NudgeCard } from "@/src/features/nudges/NudgeCard";
-import { SendNudgeModal } from "@/src/features/nudges/SendNudgeModal";
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
 import { toHomeCardModel } from "@/src/features/nudges/cardModel";
+import { CompletedNudgeModal } from "@/src/features/nudges/CompletedNudgeModal";
+import { NudgeCard } from "@/src/features/nudges/NudgeCard";
 import { getNudgeSession } from "@/src/features/nudges/session";
 import { sortForHome } from "@/src/features/nudges/sort";
 import { deriveStatus } from "@/src/features/nudges/status";
 import type { Nudge } from "@/src/features/nudges/types";
 import { formatTimeLeft, msFromNow } from "@/src/lib/time";
+import { appImages } from "@/src/theme/assets";
 import { tokens } from "@/src/theme/tokens";
+import { AppTopBar } from "@/src/ui/AppTopBar";
+import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
-import { Chip } from "@/src/ui/Chip";
-import { FloatingActionButton } from "@/src/ui/FloatingActionButton";
 import { Screen } from "@/src/ui/Screen";
-import { ScreenHeader } from "@/src/ui/ScreenHeader";
-import { SectionHeader } from "@/src/ui/SectionHeader";
 import { Txt } from "@/src/ui/Txt";
 
 type Row =
@@ -36,10 +36,8 @@ export default function Home() {
   const [nudges, setNudges] = useState<Nudge[]>([]);
   const [sessionReady, setSessionReady] = useState(false);
   const [pairId, setPairId] = useState<string | null>(null);
-  const [modalOpen, setModalOpen] = useState(false);
-  const [emoji, setEmoji] = useState("📣");
-  const [nudgeTitle, setNudgeTitle] = useState("");
-  const [nudgeMessage, setNudgeMessage] = useState("");
+  const [completedModalOpen, setCompletedModalOpen] = useState(false);
+  const [completedNudge, setCompletedNudge] = useState<NudgeCardModel | null>(null);
 
   const loadNudges = useCallback(async (showError = false) => {
     try {
@@ -86,34 +84,43 @@ export default function Home() {
       .sort(sortForHome);
   }, [nudges]);
 
-  const rows = useMemo<Row[]>(() => {
-    const active = visibleNudges.filter((nudge) => {
-      const status = deriveStatus(nudge);
-      return (
-        status === "active" || status === "evening_reminder" || status === "final_warning"
-      );
-    });
+  const activeNudges = useMemo(
+    () =>
+      visibleNudges.filter((nudge) => {
+        const status = deriveStatus(nudge);
+        return (
+          status === "active" || status === "evening_reminder" || status === "final_warning"
+        );
+      }),
+    [visibleNudges]
+  );
 
+  const rows = useMemo<Row[]>(() => {
     const expired = visibleNudges.filter((nudge) => deriveStatus(nudge) === "expired");
     const nextRows: Row[] = [];
 
-    if (active.length) {
-      nextRows.push({ kind: "header", title: "Active nudges", count: active.length, id: "h-active" });
-      nextRows.push(...active.map((nudge): Row => ({ kind: "nudge", nudge, id: nudge.id })));
+    if (activeNudges.length) {
+      nextRows.push({
+        kind: "header",
+        title: "Active nudges",
+        count: activeNudges.length,
+        id: "h-active",
+      });
+      nextRows.push(...activeNudges.map((nudge): Row => ({ kind: "nudge", nudge, id: nudge.id })));
     }
 
     if (expired.length) {
-      nextRows.push({ kind: "header", title: "Needs attention", count: expired.length, id: "h-expired" });
+      nextRows.push({
+        kind: "header",
+        title: "Needs attention",
+        count: expired.length,
+        id: "h-expired",
+      });
       nextRows.push(...expired.map((nudge): Row => ({ kind: "nudge", nudge, id: nudge.id })));
     }
 
     return nextRows;
-  }, [visibleNudges]);
-
-  const heroStats = {
-    active: rows.filter((row) => row.kind === "nudge" && deriveStatus(row.nudge) !== "expired").length,
-    expired: rows.filter((row) => row.kind === "nudge" && deriveStatus(row.nudge) === "expired").length,
-  };
+  }, [activeNudges, visibleNudges]);
 
   return (
     <Screen style={styles.screen}>
@@ -121,44 +128,41 @@ export default function Home() {
         data={rows}
         keyExtractor={(row) => row.id}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListHeaderComponent={
-          <>
-            <ScreenHeader
-              icon="🐱"
-              title="Active Nudges"
-              subtitle="Card-based, calm, and still a little cheeky."
-              eyebrow="Today"
-            />
+          <View style={styles.headerContent}>
+            <AppTopBar logo />
 
-            <View style={styles.headerStack}>
-              <Card style={styles.heroCard}>
+            <View style={styles.heroCard}>
+              <View style={styles.heroCopy}>
                 <Txt variant="hero" style={styles.heroTitle}>
-                  Little nudges, big follow-through.
+                  Time for doing the chores, Mewo!
                 </Txt>
-                <Txt variant="body" style={styles.heroText}>
-                  Keep reminders tidy and visible without turning the whole app into a chat thread.
-                </Txt>
-                <View style={styles.heroChips}>
-                  <Chip label={`${heroStats.active} active`} active={heroStats.active > 0} />
-                  <Chip label={`${heroStats.expired} expired`} tone="alert" />
-                </View>
-              </Card>
+              </View>
 
-              <Card variant="inner" style={styles.tipCard}>
-                <Txt variant="bodyStrong">Cat tip</Txt>
-                <Txt variant="meta">
-                  Use short titles and let the card status do the heavy lifting.
-                </Txt>
-              </Card>
+              <Image source={appImages.megaphone} style={styles.heroArt} contentFit="contain" />
             </View>
-          </>
+
+            <View style={styles.sectionHead}>
+              <Txt variant="h2">Active nudges</Txt>
+              <Pressable onPress={() => router.push("/(tabs)/history?filter=active")} hitSlop={10}>
+                <Txt variant="label" style={styles.viewAll}>
+                  View all
+                </Txt>
+              </Pressable>
+            </View>
+          </View>
         }
         renderItem={({ item }) => {
           if (item.kind === "header") {
+            if (item.id === "h-active") {
+              return null;
+            }
+
             return (
-              <View style={styles.sectionWrap}>
-                <SectionHeader title={item.title} count={item.count} />
+              <View style={styles.secondarySectionHead}>
+                <Txt variant="h2">{item.title}</Txt>
               </View>
             );
           }
@@ -185,6 +189,12 @@ export default function Home() {
                 onDone={async (id) => {
                   try {
                     await markDone(id);
+                    setCompletedNudge({
+                      ...model,
+                      status: "done",
+                      statusLabel: "Completed just now",
+                    });
+                    setCompletedModalOpen(true);
                     await loadNudges(true);
                   } catch (error) {
                     Alert.alert(
@@ -237,46 +247,25 @@ export default function Home() {
               <Txt variant="meta" style={styles.emptyText}>
                 {sessionReady && !pairId
                   ? "This app needs a saved pair ID to load shared nudges from Supabase."
-                  : "Create a new nudge and it will land here as a tidy card."}
+                  : "Create a nudge and it will show up here as a tidy card."}
               </Txt>
             </Card>
           </View>
         }
       />
 
-      <FloatingActionButton onPress={() => setModalOpen(true)} />
+      <View style={styles.bottomCta}>
+        <Button
+          label="Create Nudge"
+          onPress={() => router.push("/create-nudge")}
+          style={styles.createButton}
+        />
+      </View>
 
-      <SendNudgeModal
-        visible={modalOpen}
-        emoji={emoji}
-        title={nudgeTitle}
-        message={nudgeMessage}
-        onChangeEmoji={setEmoji}
-        onChangeTitle={setNudgeTitle}
-        onChangeMessage={setNudgeMessage}
-        onClose={() => setModalOpen(false)}
-        onSend={async () => {
-          const title = nudgeTitle.trim();
-          if (!title) return;
-
-          try {
-            await sendNudge({
-              pairId: pairId ?? "",
-              title,
-              emoji,
-              message: nudgeMessage,
-            });
-            await loadNudges(true);
-            setNudgeTitle("");
-            setNudgeMessage("");
-            setModalOpen(false);
-          } catch (error) {
-            Alert.alert(
-              "Nudge error",
-              error instanceof Error ? error.message : "Could not send this nudge."
-            );
-          }
-        }}
+      <CompletedNudgeModal
+        visible={completedModalOpen}
+        model={completedNudge}
+        onClose={() => setCompletedModalOpen(false)}
       />
     </Screen>
   );
@@ -285,47 +274,62 @@ export default function Home() {
 const styles = StyleSheet.create({
   screen: {
     paddingHorizontal: 0,
-    paddingTop: 0,
+    paddingTop: 14,
   },
   list: {
-    paddingBottom: 28,
-  },
-  headerStack: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 18,
+    paddingBottom: 130,
     gap: 12,
-    marginBottom: 8,
+  },
+  headerContent: {
+    gap: 18,
+    paddingBottom: 4,
   },
   heroCard: {
-    gap: 10,
+    minHeight: 150,
+    paddingBottom: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "hidden",
+  },
+  heroCopy: {
+    flex: 1,
+    maxWidth: "70%",
+    gap: 4,
   },
   heroTitle: {
     fontSize: 30,
-    lineHeight: 36,
+    lineHeight: 39,
   },
   heroText: {
-    color: tokens.colors.textSecondary,
+    marginTop: 8,
+    paddingRight: 8,
   },
-  heroChips: {
+  heroArt: {
+    width: 150,
+    height: 170,
+    marginTop: 10,
+  },
+  sectionHead: {
     flexDirection: "row",
-    gap: 10,
-    marginTop: 6,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 2,
   },
-  tipCard: {
-    gap: 4,
+  secondarySectionHead: {
+    paddingTop: 6,
+    paddingHorizontal: 2,
   },
-  sectionWrap: {
-    paddingHorizontal: 20,
-    marginTop: 4,
+  viewAll: {
+    color: tokens.colors.primary,
   },
-  cardWrap: {
-    paddingHorizontal: 20,
-  },
+  cardWrap: {},
   separator: {
-    height: 12,
+    height: 0,
   },
   emptyWrap: {
-    paddingHorizontal: 20,
-    marginTop: 8,
+    paddingTop: 6,
   },
   emptyCard: {
     alignItems: "center",
@@ -333,5 +337,15 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     textAlign: "center",
+  },
+  bottomCta: {
+    position: "absolute",
+    left: 18,
+    right: 18,
+    bottom: 22,
+  },
+  createButton: {
+    minHeight: 58,
+    borderRadius: 22,
   },
 });

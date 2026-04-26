@@ -8,5 +8,16 @@ export default function RootLayout() {
 
   if (!loaded) return <Text />;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(tabs)" />
+      <Stack.Screen
+        name="create-nudge"
+        options={{
+          presentation: "card",
+          animation: "slide_from_right",
+        }}
+      />
+    </Stack>
+  );
 }

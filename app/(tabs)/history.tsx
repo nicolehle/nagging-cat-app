@@ -1,21 +1,23 @@
+import { useFocusEffect } from "@react-navigation/native";
+import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, ScrollView, StyleSheet, View } from "react-native";
-import { useFocusEffect } from "@react-navigation/native";
 
-import { fetchHistoryNudges } from "@/src/features/nudges/api";
-import { NudgeCard } from "@/src/features/nudges/NudgeCard";
+import { fetchActiveNudges, fetchHistoryNudges } from "@/src/features/nudges/api";
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
+import { NudgeCard } from "@/src/features/nudges/NudgeCard";
 import { getNudgeSession } from "@/src/features/nudges/session";
 import type { Nudge } from "@/src/features/nudges/types";
+import { AppTopBar } from "@/src/ui/AppTopBar";
 import { Card } from "@/src/ui/Card";
 import { Chip } from "@/src/ui/Chip";
 import { Screen } from "@/src/ui/Screen";
-import { ScreenHeader } from "@/src/ui/ScreenHeader";
 import { Txt } from "@/src/ui/Txt";
 
-type Filter = "all" | "completed" | "expired" | "dismissed";
+type Filter = "active" | "all" | "completed" | "expired" | "dismissed";
 
-const filters: { id: Filter; label: string; tone?: "success" | "alert" }[] = [
+const filters: { id: Filter; label: string; tone?: "success" | "alert" | "accent" }[] = [
+  { id: "active", label: "Active", tone: "accent" },
   { id: "all", label: "All" },
   { id: "completed", label: "Done", tone: "success" },
   { id: "expired", label: "Expired", tone: "alert" },
@@ -34,10 +36,18 @@ function formatTimeAgo(timestamp: number) {
 }
 
 export default function History() {
-  const [activeFilter, setActiveFilter] = useState<Filter>("all");
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const initialFilter = params.filter === "active" ? "active" : "all";
+  const [activeFilter, setActiveFilter] = useState<Filter>(initialFilter);
   const [history, setHistory] = useState<Nudge[]>([]);
   const [pairId, setPairId] = useState<string | null>(null);
   const partnerName = "Partner";
+
+  useEffect(() => {
+    if (params.filter === "active") {
+      setActiveFilter("active");
+    }
+  }, [params.filter]);
 
   const loadHistory = useCallback(async (showError = false) => {
     try {
@@ -49,8 +59,19 @@ export default function History() {
         return;
       }
 
-      const nextHistory = await fetchHistoryNudges(session.pairId);
-      setHistory(nextHistory);
+      const [activeNudges, historyNudges] = await Promise.all([
+        fetchActiveNudges(session.pairId),
+        fetchHistoryNudges(session.pairId),
+      ]);
+
+      const merged = [...activeNudges, ...historyNudges].reduce<Nudge[]>((acc, item) => {
+        if (!acc.some((existing) => existing.id === item.id)) {
+          acc.push(item);
+        }
+        return acc;
+      }, []);
+
+      setHistory(merged);
     } catch (error) {
       if (showError) {
         Alert.alert(
@@ -72,6 +93,7 @@ export default function History() {
   );
 
   const filtered = useMemo(() => {
+    if (activeFilter === "active") return history.filter((item) => item.status === "active" || item.status === "evening_reminder" || item.status === "final_warning");
     if (activeFilter === "all") return history;
     if (activeFilter === "completed") return history.filter((item) => item.status === "done");
     if (activeFilter === "expired") return history.filter((item) => item.status === "expired");
@@ -93,7 +115,9 @@ export default function History() {
           ? "Done"
           : item.status === "dismissed"
             ? "Dismissed"
-            : "Expired",
+            : item.status === "expired"
+              ? "Expired"
+              : "Active",
       escalationLevel: item.escalationLevel,
     }));
   }, [filtered, partnerName]);
@@ -104,54 +128,39 @@ export default function History() {
         data={models}
         keyExtractor={(item) => item.id}
         contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
         ItemSeparatorComponent={() => <View style={styles.separator} />}
         ListHeaderComponent={
-          <>
-            <ScreenHeader
-              icon="🕘"
-              title="History"
-              subtitle="Completed, expired, and dismissed nudges in one tidy archive."
-              eyebrow="Archive"
-            />
+          <View style={styles.headerContent}>
+            <AppTopBar logo />
 
-            <View style={styles.headerStack}>
-              <Card variant="inner" style={styles.summaryCard}>
-                <Txt variant="bodyStrong">Scan past nudges fast</Txt>
-                <Txt variant="meta">
-                  Status chips stay subtle so the list feels readable instead of noisy.
-                </Txt>
-              </Card>
-
-              <View style={styles.chipsWrap}>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View style={styles.chipsRow}>
-                    {filters.map((filter) => (
-                      <Chip
-                        key={filter.id}
-                        label={filter.label}
-                        active={activeFilter === filter.id}
-                        onPress={() => setActiveFilter(filter.id)}
-                        tone={filter.tone}
-                      />
-                    ))}
-                  </View>
-                </ScrollView>
-              </View>
+            <View style={styles.titleWrap}>
+              <Txt variant="h2">All nudges</Txt>
             </View>
-          </>
-        }
-        renderItem={({ item }) => (
-          <View style={styles.cardWrap}>
-            <NudgeCard variant="history" model={item} />
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={styles.chipsRow}>
+                {filters.map((filter) => (
+                  <Chip
+                    key={filter.id}
+                    label={filter.label}
+                    active={activeFilter === filter.id}
+                    onPress={() => setActiveFilter(filter.id)}
+                    tone={filter.tone}
+                  />
+                ))}
+              </View>
+            </ScrollView>
           </View>
-        )}
+        }
+        renderItem={({ item }) => <NudgeCard variant="history" model={item} />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Card style={styles.emptyCard}>
-              <Txt variant="h2">{pairId ? "No history yet" : "Connect to load history"}</Txt>
+              <Txt variant="h2">{pairId ? "No nudges here yet" : "Connect to load nudges"}</Txt>
               <Txt variant="meta" style={styles.emptyText}>
                 {pairId
-                  ? "Done, expired, and dismissed nudges will show up here."
+                  ? "Try another filter or create a new nudge."
                   : "This app needs a saved pair ID to load shared nudges from Supabase."}
               </Txt>
             </Card>
@@ -164,37 +173,30 @@ export default function History() {
 
 const styles = StyleSheet.create({
   screen: {
-    paddingHorizontal: 0,
-    paddingTop: 0,
+    paddingTop: 14,
+    paddingHorizontal: 18,
   },
   list: {
     paddingBottom: 24,
-  },
-  headerStack: {
-    paddingHorizontal: 20,
     gap: 12,
-    marginBottom: 8,
   },
-  summaryCard: {
+  headerContent: {
+    gap: 16,
+    paddingBottom: 6,
+  },
+  titleWrap: {
     gap: 4,
-  },
-  chipsWrap: {
-    marginBottom: 4,
   },
   chipsRow: {
     flexDirection: "row",
     gap: 8,
-    paddingBottom: 8,
-  },
-  cardWrap: {
-    paddingHorizontal: 20,
+    paddingBottom: 4,
   },
   separator: {
-    height: 12,
+    height: 0,
   },
   emptyWrap: {
-    paddingHorizontal: 20,
-    marginTop: 8,
+    paddingTop: 6,
   },
   emptyCard: {
     alignItems: "center",

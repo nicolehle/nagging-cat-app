@@ -1,16 +1,15 @@
-import { router } from "expo-router";
-import { useState } from "react";
 import { ChevronRight, LogOut } from "lucide-react-native";
+import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { usePairing } from "@/src/features/pairing/usePairing";
 import { tokens } from "@/src/theme/tokens";
+import { AppTopBar } from "@/src/ui/AppTopBar";
 import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
 import { Chip } from "@/src/ui/Chip";
 import { Input } from "@/src/ui/Input";
 import { Screen } from "@/src/ui/Screen";
-import { ScreenHeader } from "@/src/ui/ScreenHeader";
 import { SettingButton } from "@/src/ui/SettingButton";
 import { Txt } from "@/src/ui/Txt";
 
@@ -48,12 +47,7 @@ export default function PartnerConnection() {
 
   return (
     <Screen style={styles.screen} keyboardAvoiding>
-      <ScreenHeader
-        icon="🤝"
-        title="Partner"
-        subtitle="Connection details without extra fluff."
-        eyebrow="Pairing"
-      />
+      <AppTopBar title="Pairing" centeredTitle showBack />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
@@ -176,14 +170,14 @@ export default function PartnerConnection() {
             </Card>
           ) : null}
 
-          <Card variant="inner" style={styles.backCard}>
+          {/* <Card variant="inner" style={styles.backCard}>
             <SettingButton
               icon={<ChevronRight size={20} color={tokens.colors.primary} strokeWidth={2} />}
               label="Back"
               description="Return to settings."
               onPress={() => router.back()}
             />
-          </Card>
+          </Card> */}
         </View>
       </ScrollView>
     </Screen>
@@ -191,9 +185,13 @@ export default function PartnerConnection() {
 }
 
 const styles = StyleSheet.create({
-  screen: { paddingHorizontal: 0, paddingTop: 0 },
+  screen: {
+    paddingTop: 14,
+    paddingHorizontal: 18,
+   },
   scroll: { paddingBottom: 24 },
-  body: { paddingHorizontal: tokens.space.xl, gap: 16 },
+  body: {  gap: 18,
+    paddingTop: 12, },
   statusCard: {
     gap: 12,
   },

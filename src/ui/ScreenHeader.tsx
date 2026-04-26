@@ -32,7 +32,7 @@ export function ScreenHeader({
           <Txt variant="h2">{icon}</Txt>
         </View>
         <View style={styles.textBlock}>
-          <Txt variant="h1">{title}</Txt>
+          <Txt variant="h2">{title}</Txt>
           {subtitle ? (
             <Txt variant="meta" style={styles.subtitle}>
               {subtitle}
@@ -66,15 +66,15 @@ const styles = StyleSheet.create({
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 14,
+    gap: 8,
   },
   textBlock: {
     flex: 1,
     gap: 4,
   },
   iconBox: {
-    width: 52,
-    height: 52,
+    width: 48,
+    height: 48,
     borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",

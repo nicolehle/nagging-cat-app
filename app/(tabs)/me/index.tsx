@@ -7,7 +7,6 @@ import { useProfileName } from "@/src/features/pairing/useProfileName";
 import { tokens } from "@/src/theme/tokens";
 import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
-import { Chip } from "@/src/ui/Chip";
 import { Input } from "@/src/ui/Input";
 import { Screen } from "@/src/ui/Screen";
 import { ScreenHeader } from "@/src/ui/ScreenHeader";
@@ -68,12 +67,10 @@ export default function Me() {
         <ScreenHeader
           icon="⚙️"
           title="Settings"
-          subtitle="Clean controls, light accents, no extra fuss."
-          eyebrow="Profile"
         />
 
         <View style={styles.body}>
-          <Card style={styles.heroCard}>
+          {/* <Card style={styles.heroCard}>
             <Txt variant="h2">Cute, but capable.</Txt>
             <Txt variant="meta">
               Tidy up your profile, pairing, and reminder preferences from one calm control panel.
@@ -82,7 +79,7 @@ export default function Me() {
               <Chip label={notifications ? "Notifications on" : "Notifications off"} active={notifications} />
               <Chip label={quietMode ? "Quiet mode" : "Always ready"} tone="accent" />
             </View>
-          </Card>
+          </Card> */}
 
           <View>
             <Txt variant="label" style={styles.sectionLabel}>
