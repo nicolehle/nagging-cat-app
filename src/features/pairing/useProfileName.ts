@@ -4,6 +4,7 @@ import {
   getCurrentLocalUserProfile,
   saveCurrentLocalUserName,
 } from "@/src/features/pairing/localUser";
+import { getOrCreateAuthSession } from "@/src/lib/authSession";
 import { supabase } from "@/src/lib/supabase";
 
 const AUTH_NOT_READY_MESSAGE = "Sign in before loading pairing.";
@@ -37,17 +38,11 @@ export function useProfileName() {
       }
     }
 
-    supabase.auth
-      .getSession()
-      .then(({ data, error: sessionError }) => {
+    getOrCreateAuthSession()
+      .then((session) => {
         if (!active) return;
 
-        if (sessionError) {
-          console.error("[profile] auth session check failed", sessionError);
-          setError("Could not check sign-in status.");
-        }
-
-        applySession(data.session?.user?.id ?? null);
+        applySession(session.user.id);
       })
       .catch((err) => {
         if (!active) return;

@@ -7,6 +7,7 @@ import {
   refreshPairingState,
   type PairingState,
 } from "@/src/features/pairing/service";
+import { getOrCreateAuthSession } from "@/src/lib/authSession";
 import { supabase } from "@/src/lib/supabase";
 
 type PairingAction = "create" | "join" | "disconnect" | null;
@@ -23,26 +24,13 @@ export function usePairing() {
   useEffect(() => {
     let active = true;
 
-    supabase.auth
-      .getSession()
-      .then(({ data, error: sessionError }) => {
+    getOrCreateAuthSession()
+      .then((session) => {
         if (!active) return;
 
-        if (sessionError) {
-          console.error("[pairing] auth session check failed", sessionError);
-          setError("Could not check sign-in status.");
-        }
-
-        const userId = data.session?.user?.id ?? null;
+        const userId = session.user.id;
         setAuthUserId(userId);
         setAuthReady(true);
-
-        if (!userId) {
-          setPairing(null);
-          setLoading(false);
-          setError(null);
-          setSuccess(null);
-        }
       })
       .catch((err) => {
         if (!active) return;
@@ -51,6 +39,9 @@ export function usePairing() {
         setError("Could not check sign-in status.");
         setAuthUserId(null);
         setAuthReady(true);
+        setPairing(null);
+        setLoading(false);
+        setSuccess(null);
       });
 
     const {
