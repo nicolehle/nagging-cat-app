@@ -41,6 +41,12 @@ type SendNudgeInput = {
   message: string;
 };
 
+type BuildSendNudgePayloadInput = SendNudgeInput & {
+  fromUserId: string;
+  toUserId: string;
+  now?: Date;
+};
+
 function requirePairId(pairId: string | null): string {
   const value = pairId?.trim();
   if (!value) {
@@ -145,6 +151,27 @@ async function getPairParticipants(pairId: string) {
   return (data as PairRow | null) ?? null;
 }
 
+export function buildSendNudgeInsertPayload(input: BuildSendNudgePayloadInput) {
+  const now = input.now ?? new Date();
+  const schedule = getInitialNudgeSchedule(now);
+
+  return {
+    pair_id: input.pairId,
+    title: input.title.trim(),
+    status: "pending",
+    escalation_level: schedule.escalationLevel,
+    from_user_id: input.fromUserId,
+    to_user_id: input.toUserId,
+    last_event: "created",
+    last_event_at: now.toISOString(),
+    remind_at: schedule.nextEscalateAt?.toISOString() ?? null,
+    expires_at: schedule.expiresAt.toISOString(),
+    next_escalate_at: schedule.nextEscalateAt?.toISOString() ?? null,
+    emoji: input.emoji.trim() || DEFAULT_EMOJI,
+    message: input.message.trim(),
+  };
+}
+
 export async function sendNudge(input: SendNudgeInput) {
   const pairId = requirePairId(input.pairId);
   const title = input.title.trim();
@@ -164,23 +191,15 @@ export async function sendNudge(input: SendNudgeInput) {
     throw new Error("Connect with a partner before sending nudges.");
   }
 
-  const now = new Date();
-  const schedule = getInitialNudgeSchedule(now);
-  const { error } = await supabase.from("nudges").insert({
-    pair_id: pairId,
-    title,
-    status: "pending",
-    escalation_level: schedule.escalationLevel,
-    from_user_id: meId,
-    to_user_id: partnerId,
-    last_event: "created",
-    last_event_at: now.toISOString(),
-    remind_at: schedule.nextEscalateAt?.toISOString() ?? null,
-    expires_at: schedule.expiresAt.toISOString(),
-    next_escalate_at: schedule.nextEscalateAt?.toISOString() ?? null,
-    emoji: input.emoji.trim() || DEFAULT_EMOJI,
-    message: input.message.trim(),
-  });
+  const { error } = await supabase.from("nudges").insert(
+    buildSendNudgeInsertPayload({
+      ...input,
+      pairId,
+      title,
+      fromUserId: meId,
+      toUserId: partnerId,
+    })
+  );
 
   if (error) throw error;
 }

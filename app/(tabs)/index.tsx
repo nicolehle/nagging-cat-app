@@ -10,16 +10,19 @@ import {
   fetchActiveNudges,
   markDone,
   renewExpiredNudge,
+  sendNudge,
 } from "@/src/features/nudges/api";
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
 import { toHomeCardModel } from "@/src/features/nudges/cardModel";
 import { CompletedNudgeModal } from "@/src/features/nudges/CompletedNudgeModal";
+import { getHomeStatusLabel } from "@/src/features/nudges/labels";
 import { NudgeCard } from "@/src/features/nudges/NudgeCard";
+import { QuickNudgePicker } from "@/src/features/nudges/QuickNudgePicker";
 import { getNudgeSession } from "@/src/features/nudges/session";
 import { sortForHome } from "@/src/features/nudges/sort";
 import { deriveStatus } from "@/src/features/nudges/status";
 import type { Nudge } from "@/src/features/nudges/types";
-import { formatTimeLeft, msFromNow } from "@/src/lib/time";
+import { useQuickNudges } from "@/src/features/nudges/useQuickNudges";
 import { appImages } from "@/src/theme/assets";
 import { tokens } from "@/src/theme/tokens";
 import { AppTopBar } from "@/src/ui/AppTopBar";
@@ -38,6 +41,9 @@ export default function Home() {
   const [pairId, setPairId] = useState<string | null>(null);
   const [completedModalOpen, setCompletedModalOpen] = useState(false);
   const [completedNudge, setCompletedNudge] = useState<NudgeCardModel | null>(null);
+  const [quickPickerOpen, setQuickPickerOpen] = useState(false);
+  const [sendingQuickId, setSendingQuickId] = useState<string | null>(null);
+  const { quickNudges, reload: reloadQuickNudges } = useQuickNudges();
 
   const loadNudges = useCallback(async (showError = false) => {
     try {
@@ -69,7 +75,8 @@ export default function Home() {
   useFocusEffect(
     useCallback(() => {
       loadNudges();
-    }, [loadNudges])
+      reloadQuickNudges();
+    }, [loadNudges, reloadQuickNudges])
   );
 
   useEffect(() => {
@@ -168,16 +175,7 @@ export default function Home() {
           }
 
           const status = deriveStatus(item.nudge);
-          const statusLabel =
-            status === "active"
-              ? formatTimeLeft(msFromNow(item.nudge.expiresAt))
-              : status === "evening_reminder"
-                ? "Evening reminder"
-                : status === "final_warning"
-                  ? "Final warning"
-                  : status === "expired"
-                    ? "Expired"
-                    : "Done";
+          const statusLabel = getHomeStatusLabel(status);
 
           const model: NudgeCardModel = toHomeCardModel(item.nudge, statusLabel);
 
@@ -256,11 +254,48 @@ export default function Home() {
 
       <View style={styles.bottomCta}>
         <Button
+          label="Quick Nudge"
+          variant="secondary"
+          onPress={() => setQuickPickerOpen(true)}
+          style={styles.quickButton}
+        />
+        <Button
           label="Create Nudge"
           onPress={() => router.push("/create-nudge")}
           style={styles.createButton}
         />
       </View>
+
+      <QuickNudgePicker
+        visible={quickPickerOpen}
+        quickNudges={quickNudges}
+        sendingId={sendingQuickId}
+        onClose={() => setQuickPickerOpen(false)}
+        onManage={() => {
+          setQuickPickerOpen(false);
+          router.push("/(tabs)/me");
+        }}
+        onSelect={async (item) => {
+          try {
+            setSendingQuickId(item.id);
+            await sendNudge({
+              pairId: pairId ?? "",
+              title: item.title,
+              emoji: item.emoji,
+              message: "",
+            });
+            setQuickPickerOpen(false);
+            await loadNudges(true);
+          } catch (error) {
+            Alert.alert(
+              "Quick Nudge error",
+              error instanceof Error ? error.message : "Could not send this quick nudge."
+            );
+          } finally {
+            setSendingQuickId(null);
+          }
+        }}
+      />
 
       <CompletedNudgeModal
         visible={completedModalOpen}
@@ -343,8 +378,16 @@ const styles = StyleSheet.create({
     left: 18,
     right: 18,
     bottom: 22,
+    flexDirection: "row",
+    gap: 10,
+  },
+  quickButton: {
+    minHeight: 58,
+    borderRadius: 22,
+    paddingHorizontal: 18,
   },
   createButton: {
+    flex: 1,
     minHeight: 58,
     borderRadius: 22,
   },

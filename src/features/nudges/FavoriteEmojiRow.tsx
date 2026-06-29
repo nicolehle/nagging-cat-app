@@ -1,6 +1,32 @@
+import { useMemo, useState } from "react";
+import { FAVORITE_EMOJIS } from "@/src/features/nudges/favoriteEmojis";
 import { tokens } from "@/src/theme/tokens";
 import { Txt } from "@/src/ui/Txt";
-import { Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Pressable, StyleSheet, View } from "react-native";
+
+const COLLAPSED_EMOJI_COUNT = 4;
+
+function EmojiPill({
+  emoji,
+  selected,
+  onPress,
+}: {
+  emoji: string;
+  selected: boolean;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={[
+        styles.pill,
+        selected ? styles.pillSelected : styles.pillIdle,
+      ]}
+    >
+      <Txt variant="h3">{emoji}</Txt>
+    </Pressable>
+  );
+}
 
 export function FavoriteEmojiRow({
   value,
@@ -11,37 +37,49 @@ export function FavoriteEmojiRow({
   onChange: (emoji: string) => void;
   onPressMore?: () => void;
 }) {
-  const emojis = ["📣", "💧", "🧘", "🧠", "🧺", "🍳", "🧹", "💊", "🐱", "📦"];
+  const [expanded, setExpanded] = useState(false);
+  const collapsedEmojis = useMemo(() => {
+    const fallbackOptions = FAVORITE_EMOJIS.filter((emoji) => emoji !== value);
+    return [value, ...fallbackOptions].slice(0, COLLAPSED_EMOJI_COUNT);
+  }, [value]);
+  const visibleEmojis = expanded ? FAVORITE_EMOJIS : collapsedEmojis;
+
+  function handleSelect(emoji: string) {
+    onChange(emoji);
+    setExpanded(false);
+  }
 
   return (
     <View style={styles.wrap}>
       <Txt variant="label">Emoji</Txt>
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-        <View style={styles.row}>
-          {emojis.map((e) => {
-            const selected = e === value;
-            return (
-              <Pressable
-                key={e}
-                onPress={() => onChange(e)}
-                style={[
-                  styles.pill,
-                  selected ? styles.pillSelected : styles.pillIdle,
-                ]}
-              >
-                <Txt variant="h3">{e}</Txt>
-              </Pressable>
-            );
-          })}
+      <View style={[styles.row, expanded ? styles.expandedRow : styles.collapsedRow]}>
+        {visibleEmojis.map((e) => {
+          const selected = e === value;
+          return (
+            <EmojiPill
+              key={e}
+              emoji={e}
+              selected={selected}
+              onPress={() => handleSelect(e)}
+            />
+          );
+        })}
 
-          <Pressable onPress={onPressMore} style={[styles.pill, styles.morePill]}>
+        {expanded ? null : (
+          <Pressable
+            onPress={() => {
+              onPressMore?.();
+              setExpanded(true);
+            }}
+            style={[styles.pill, styles.morePill]}
+          >
             <Txt variant="h3" style={styles.moreText}>
               +
             </Txt>
           </Pressable>
-        </View>
-      </ScrollView>
+        )}
+      </View>
     </View>
   );
 }
@@ -54,6 +92,12 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 10,
     paddingVertical: 4,
+  },
+  collapsedRow: {
+    flexWrap: "nowrap",
+  },
+  expandedRow: {
+    flexWrap: "wrap",
   },
   pill: {
     width: 46,

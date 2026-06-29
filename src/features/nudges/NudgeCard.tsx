@@ -1,4 +1,5 @@
 import { CardVariant, NudgeCardModel } from "@/src/features/nudges/cardModel";
+import { getDirectionLabel } from "@/src/features/nudges/labels";
 import { tokens } from "@/src/theme/tokens";
 import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
@@ -75,6 +76,7 @@ export function NudgeCard({
   const canEscalate = escalationLevel < FINAL_WARNING_LEVEL;
   const statusStyle = statusStyles[status];
   const StatusIcon = statusStyle.Icon;
+  const directionLabel = getDirectionLabel(model.from);
 
   return (
     <Card style={[styles.card, status === "expired" && styles.expiredCard]}>
@@ -96,7 +98,7 @@ export function NudgeCard({
 
         <View style={styles.badgeWrap}>
           <Chip
-            label={status === "active" ? model.statusLabel : statusStyle.label}
+            label={directionLabel}
             tone={statusStyle.tone}
             style={styles.statusChip}
           />

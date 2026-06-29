@@ -32,6 +32,7 @@ export default function CreateNudgeScreen() {
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
       >
         <AppTopBar title="Create Nudge" centeredTitle showBack />
 

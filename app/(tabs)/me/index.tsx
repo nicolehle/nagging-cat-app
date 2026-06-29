@@ -2,8 +2,10 @@ import { router } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
+import { FavoriteEmojiRow } from "@/src/features/nudges/FavoriteEmojiRow";
 import { usePairing } from "@/src/features/pairing/usePairing";
 import { useProfileName } from "@/src/features/pairing/useProfileName";
+import { useQuickNudges } from "@/src/features/nudges/useQuickNudges";
 import { tokens } from "@/src/theme/tokens";
 import { Button } from "@/src/ui/Button";
 import { Card } from "@/src/ui/Card";
@@ -16,6 +18,7 @@ import {
   ChevronRight,
   Heart,
   Moon,
+  Trash2,
   Sparkles,
   Zap,
 } from "lucide-react-native";
@@ -28,6 +31,10 @@ export default function Me() {
   const [quietMode, setQuietMode] = useState(false);
   const [autoEscalate, setAutoEscalate] = useState(true);
   const [useGiphy, setUseGiphy] = useState(false);
+  const [newQuickNudgeTitle, setNewQuickNudgeTitle] = useState("");
+  const [newQuickNudgeEmoji, setNewQuickNudgeEmoji] = useState("📣");
+  const [quickNudgeError, setQuickNudgeError] = useState("");
+  const { quickNudges, addQuickNudge, removeQuickNudge } = useQuickNudges();
   const { pairing, loading, error } = usePairing();
   const {
     name,
@@ -145,6 +152,67 @@ export default function Me() {
 
                 <ChevronRight size={20} color={tokens.colors.textTertiary} />
               </Pressable>
+            </Card>
+          </View>
+
+          <View>
+            <Txt variant="label" style={styles.sectionLabel}>
+              Quick Nudges
+            </Txt>
+
+            <Card style={styles.quickNudgeCard}>
+              {quickNudges.length ? (
+                <View style={styles.quickNudgeList}>
+                  {quickNudges.map((item) => (
+                    <View key={item.id} style={styles.quickNudgeRow}>
+                      <View style={styles.quickNudgeEmoji}>
+                        <Txt variant="h3">{item.emoji}</Txt>
+                      </View>
+                      <Txt variant="bodyStrong" style={styles.quickNudgeTitle}>
+                        {item.title}
+                      </Txt>
+                      <Pressable onPress={() => removeQuickNudge(item.id)} hitSlop={10}>
+                        <Trash2 size={18} color={tokens.colors.textTertiary} strokeWidth={2} />
+                      </Pressable>
+                    </View>
+                  ))}
+                </View>
+              ) : (
+                <Txt variant="meta">No quick nudges yet.</Txt>
+              )}
+
+              <View style={styles.quickNudgeForm}>
+                <FavoriteEmojiRow value={newQuickNudgeEmoji} onChange={setNewQuickNudgeEmoji} />
+                <Input
+                  label="Add quick nudge"
+                  value={newQuickNudgeTitle}
+                  onChangeText={(value) => {
+                    setNewQuickNudgeTitle(value);
+                    setQuickNudgeError("");
+                  }}
+                  placeholder="Drink water"
+                />
+                <Button
+                  label="Add"
+                  variant="secondary"
+                  disabled={!newQuickNudgeTitle.trim()}
+                  onPress={async () => {
+                    const result = await addQuickNudge(newQuickNudgeTitle, newQuickNudgeEmoji);
+                    if (result.ok) {
+                      setNewQuickNudgeTitle("");
+                      setNewQuickNudgeEmoji("📣");
+                      setQuickNudgeError("");
+                    } else {
+                      setQuickNudgeError(result.error);
+                    }
+                  }}
+                />
+                {quickNudgeError ? (
+                  <Txt variant="caption" style={styles.errorText}>
+                    {quickNudgeError}
+                  </Txt>
+                ) : null}
+              </View>
             </Card>
           </View>
 
@@ -288,6 +356,40 @@ const styles = StyleSheet.create({
   partnerCopy: {
     flex: 1,
     gap: 2,
+  },
+  quickNudgeCard: {
+    gap: 16,
+  },
+  quickNudgeList: {
+    gap: 10,
+  },
+  quickNudgeRow: {
+    minHeight: 52,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 12,
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+    backgroundColor: tokens.colors.surfaceSubtle,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  quickNudgeEmoji: {
+    width: 34,
+    height: 34,
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: tokens.colors.surface,
+    borderWidth: 1,
+    borderColor: tokens.colors.border,
+  },
+  quickNudgeTitle: {
+    flex: 1,
+  },
+  quickNudgeForm: {
+    gap: 10,
   },
   footer: {
     alignItems: "center",
