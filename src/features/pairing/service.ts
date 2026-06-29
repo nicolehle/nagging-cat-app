@@ -1,6 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-import { getCurrentLocalUserId } from "@/src/features/pairing/localUser";
+import { ensureLocalUserRecord } from "@/src/features/pairing/localUser";
 import { generateInviteCode } from "@/src/lib/inviteCode";
 import { supabase } from "@/src/lib/supabase";
 import { PAIR_ID_STORAGE_KEY } from "@/src/features/nudges/session";
@@ -43,10 +43,6 @@ function logPairingError(message: string, error: unknown, extra?: Record<string,
 
 function isNonEmptyInviteCode(inviteCode: string | null | undefined): inviteCode is string {
   return Boolean(inviteCode?.trim());
-}
-
-async function getCurrentUserId() {
-  return getCurrentLocalUserId();
 }
 
 async function cachePairId(pairId: string | null) {
@@ -180,9 +176,9 @@ async function clearUserSlot(pair: PairRow, userId: string) {
   if (error) throw error;
 }
 
-export async function refreshPairingState() {
+export async function refreshPairingState(meId: string) {
   try {
-    const meId = await getCurrentUserId();
+    await ensureLocalUserRecord(meId);
     const pair = await getCurrentPairRow(meId);
     await cachePairId(pair?.id ?? null);
     const baseState = toPairingState(pair, meId);
@@ -204,9 +200,9 @@ export async function refreshPairingState() {
   }
 }
 
-export async function createInvitePair() {
+export async function createInvitePair(meId: string) {
   try {
-    const meId = await getCurrentUserId();
+    await ensureLocalUserRecord(meId);
     const existingPair = await getCurrentPairRow(meId);
 
     if (existingPair) {
@@ -216,7 +212,7 @@ export async function createInvitePair() {
       });
       const pairWithCode = await ensureInviteCode(existingPair);
       await cachePairId(pairWithCode.id);
-      return await refreshPairingState();
+      return await refreshPairingState(meId);
     }
 
     for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -241,7 +237,7 @@ export async function createInvitePair() {
           inviteCode: pair.invite_code,
         });
         await cachePairId(pair.id);
-        return await refreshPairingState();
+        return await refreshPairingState(meId);
       }
 
       const message = String(error?.message ?? "").toLowerCase();
@@ -257,13 +253,13 @@ export async function createInvitePair() {
   }
 }
 
-export async function joinPairByInviteCode(rawInviteCode: string) {
+export async function joinPairByInviteCode(meId: string, rawInviteCode: string) {
   const inviteCode = rawInviteCode.trim().toUpperCase();
   if (!inviteCode) {
     throw new Error("Enter an invite code first.");
   }
 
-  const meId = await getCurrentUserId();
+  await ensureLocalUserRecord(meId);
   const currentPair = await getCurrentPairRow(meId);
   const currentPartnerId =
     currentPair?.user_a_id === meId ? currentPair.user_b_id : currentPair?.user_a_id;
@@ -313,11 +309,11 @@ export async function joinPairByInviteCode(rawInviteCode: string) {
 
   const pair = updatedPair as PairRow;
   await cachePairId(pair.id);
-  return refreshPairingState();
+  return refreshPairingState(meId);
 }
 
-export async function disconnectCurrentUser() {
-  const meId = await getCurrentUserId();
+export async function disconnectCurrentUser(meId: string) {
+  await ensureLocalUserRecord(meId);
   const pair = await getCurrentPairRow(meId);
 
   if (!pair) {
@@ -328,5 +324,5 @@ export async function disconnectCurrentUser() {
   await clearUserSlot(pair, meId);
   await cachePairId(null);
 
-  return refreshPairingState();
+  return refreshPairingState(meId);
 }

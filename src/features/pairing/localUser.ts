@@ -1,37 +1,50 @@
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import { supabase } from "@/src/lib/supabase";
-
-const LOCAL_USER_ID_STORAGE_KEY = "nagcat_local_user_id";
 
 type UserRow = {
   id: string;
   name: string | null;
 };
 
-function randomHex(length: number) {
-  let out = "";
-  while (out.length < length) {
-    out += Math.floor(Math.random() * 16).toString(16);
-  }
-  return out.slice(0, length);
-}
-
-function generateLocalUserId() {
-  return `${randomHex(8)}-${randomHex(4)}-4${randomHex(3)}-a${randomHex(3)}-${randomHex(12)}`;
-}
-
 function makeDefaultUserName(userId: string) {
   return `NagCat ${userId.slice(0, 4).toUpperCase()}`;
 }
 
-export async function getOrCreateLocalUserId() {
-  const cached = (await AsyncStorage.getItem(LOCAL_USER_ID_STORAGE_KEY))?.trim();
-  if (cached) return cached;
+function isDuplicateRowError(error: { code?: string; message?: string }) {
+  return error.code === "23505" || error.message?.toLowerCase().includes("duplicate");
+}
 
-  const userId = generateLocalUserId();
-  await AsyncStorage.setItem(LOCAL_USER_ID_STORAGE_KEY, userId);
-  return userId;
+async function getAuthenticatedUserId() {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await supabase.auth.getSession();
+
+  if (sessionError) {
+    throw sessionError;
+  }
+
+  if (!session?.user?.id) {
+    throw new Error("Sign in before loading pairing.");
+  }
+
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError) {
+    throw userError;
+  }
+
+  if (!user?.id) {
+    throw new Error("Sign in before loading pairing.");
+  }
+
+  return user.id;
+}
+
+export async function getOrCreateLocalUserId() {
+  return getAuthenticatedUserId();
 }
 
 export async function ensureLocalUserRecord(userId: string) {
@@ -59,6 +72,20 @@ export async function ensureLocalUserRecord(userId: string) {
     .single();
 
   if (insertError) {
+    if (isDuplicateRowError(insertError)) {
+      const { data: existing, error: existingError } = await supabase
+        .from("users")
+        .select("id,name")
+        .eq("id", userId)
+        .single();
+
+      if (existingError) {
+        throw existingError;
+      }
+
+      return existing as UserRow;
+    }
+
     throw insertError;
   }
 
@@ -66,13 +93,13 @@ export async function ensureLocalUserRecord(userId: string) {
 }
 
 export async function getCurrentLocalUserId() {
-  const userId = await getOrCreateLocalUserId();
+  const userId = await getAuthenticatedUserId();
   await ensureLocalUserRecord(userId);
   return userId;
 }
 
 export async function getCurrentLocalUserProfile() {
-  const userId = await getOrCreateLocalUserId();
+  const userId = await getAuthenticatedUserId();
   const user = await ensureLocalUserRecord(userId);
 
   return {
@@ -82,7 +109,8 @@ export async function getCurrentLocalUserProfile() {
 }
 
 export async function saveCurrentLocalUserName(rawName: string) {
-  const userId = await getOrCreateLocalUserId();
+  const userId = await getAuthenticatedUserId();
+  await ensureLocalUserRecord(userId);
   const name = rawName.trim();
 
   const { data, error } = await supabase

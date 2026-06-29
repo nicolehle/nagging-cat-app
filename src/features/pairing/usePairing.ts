@@ -7,22 +7,99 @@ import {
   refreshPairingState,
   type PairingState,
 } from "@/src/features/pairing/service";
+import { supabase } from "@/src/lib/supabase";
 
 type PairingAction = "create" | "join" | "disconnect" | null;
 
 export function usePairing() {
   const [pairing, setPairing] = useState<PairingState | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [actionLoading, setActionLoading] = useState<PairingAction>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
+  useEffect(() => {
+    let active = true;
+
+    supabase.auth
+      .getSession()
+      .then(({ data, error: sessionError }) => {
+        if (!active) return;
+
+        if (sessionError) {
+          console.error("[pairing] auth session check failed", sessionError);
+          setError("Could not check sign-in status.");
+        }
+
+        const userId = data.session?.user?.id ?? null;
+        setAuthUserId(userId);
+        setAuthReady(true);
+
+        if (!userId) {
+          setPairing(null);
+          setLoading(false);
+          setError(null);
+          setSuccess(null);
+        }
+      })
+      .catch((err) => {
+        if (!active) return;
+
+        console.error("[pairing] auth session check failed", err);
+        setError("Could not check sign-in status.");
+        setAuthUserId(null);
+        setAuthReady(true);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (!active) return;
+
+      setAuthUserId(session?.user?.id ?? null);
+      setAuthReady(true);
+
+      if (!session?.user?.id) {
+        setPairing(null);
+        setLoading(false);
+        setError(null);
+        setSuccess(null);
+      }
+    });
+
+    return () => {
+      active = false;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const canRunPairingRequest = useCallback(() => {
+    if (!authReady) {
+      return false;
+    }
+
+    if (!authUserId) {
+      setPairing(null);
+      setLoading(false);
+      setError(null);
+      return false;
+    }
+
+    return true;
+  }, [authReady, authUserId]);
+
   const refresh = useCallback(async () => {
+    if (!canRunPairingRequest() || !authUserId) {
+      return null;
+    }
+
     setLoading(true);
     setError(null);
 
     try {
-      const nextPairing = await refreshPairingState();
+      const nextPairing = await refreshPairingState(authUserId);
       setPairing(nextPairing);
       return nextPairing;
     } catch (err) {
@@ -32,19 +109,27 @@ export function usePairing() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [authUserId, canRunPairingRequest]);
 
   useEffect(() => {
+    if (!authReady || !authUserId) {
+      return;
+    }
+
     refresh();
-  }, [refresh]);
+  }, [authReady, authUserId, refresh]);
 
   const createInvite = useCallback(async () => {
+    if (!canRunPairingRequest() || !authUserId) {
+      return null;
+    }
+
     setActionLoading("create");
     setError(null);
     setSuccess(null);
 
     try {
-      const nextPairing = await createInvitePair();
+      const nextPairing = await createInvitePair(authUserId);
       setPairing(nextPairing);
       setSuccess(
         nextPairing?.inviteCode
@@ -59,16 +144,19 @@ export function usePairing() {
     } finally {
       setActionLoading(null);
     }
-  }, []);
+  }, [authUserId, canRunPairingRequest]);
 
   const joinByCode = useCallback(async (inviteCode: string) => {
+    if (!canRunPairingRequest() || !authUserId) {
+      return null;
+    }
+
     setActionLoading("join");
     setError(null);
     setSuccess(null);
 
     try {
-      await joinPairByInviteCode(inviteCode);
-      const refreshed = await refreshPairingState();
+      const refreshed = await joinPairByInviteCode(authUserId, inviteCode);
       setPairing(refreshed);
       setSuccess("Partner connected.");
       return refreshed;
@@ -79,15 +167,19 @@ export function usePairing() {
     } finally {
       setActionLoading(null);
     }
-  }, []);
+  }, [authUserId, canRunPairingRequest]);
 
   const disconnect = useCallback(async () => {
+    if (!canRunPairingRequest() || !authUserId) {
+      return null;
+    }
+
     setActionLoading("disconnect");
     setError(null);
     setSuccess(null);
 
     try {
-      const nextPairing = await disconnectCurrentUser();
+      const nextPairing = await disconnectCurrentUser(authUserId);
       setPairing(nextPairing);
       setSuccess("Disconnected successfully.");
       return nextPairing;
@@ -98,11 +190,13 @@ export function usePairing() {
     } finally {
       setActionLoading(null);
     }
-  }, []);
+  }, [authUserId, canRunPairingRequest]);
 
   return {
     pairing,
     loading,
+    authReady,
+    authUserId,
     actionLoading,
     error,
     success,

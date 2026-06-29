@@ -40,6 +40,8 @@ export default function Me() {
     name,
     setName,
     loading: profileLoading,
+    authReady: profileAuthReady,
+    authUserId: profileAuthUserId,
     saving: profileSaving,
     error: profileError,
     success: profileSuccess,
@@ -47,6 +49,7 @@ export default function Me() {
   } = useProfileName();
 
   const connectedName = pairing?.partnerName ?? "Partner";
+  const canEditProfile = profileAuthReady && Boolean(profileAuthUserId);
 
   const partnerSummary = loading
     ? "Checking your pair..."
@@ -101,6 +104,7 @@ export default function Me() {
                   value={profileLoading ? "" : name}
                   onChangeText={setName}
                   placeholder="Enter your name or nickname"
+                  editable={canEditProfile && !profileLoading && !profileSaving}
                 />
 
                 <Button
@@ -109,7 +113,7 @@ export default function Me() {
                     saveName(name).then(() => {});
                   }}
                   loading={profileSaving}
-                  disabled={!name.trim()}
+                  disabled={!canEditProfile || profileLoading || !name.trim()}
                 />
 
                 {profileError ? (

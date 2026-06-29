@@ -18,6 +18,8 @@ export default function PartnerConnection() {
   const {
     pairing,
     loading,
+    authReady,
+    authUserId,
     actionLoading,
     error,
     success,
@@ -28,6 +30,7 @@ export default function PartnerConnection() {
 
   const isPaired = pairing?.isPaired ?? false;
   const isPending = pairing?.status === "pending";
+  const canUsePairingActions = authReady && Boolean(authUserId);
   const connectedName = pairing?.partnerName ?? "Partner";
   const pairCode = pairing?.inviteCode ?? (isPaired ? "Hidden" : "Not created");
   const statusTitle = loading
@@ -116,6 +119,7 @@ export default function PartnerConnection() {
                       createInvite().then(() => {});
                     }}
                     loading={actionLoading === "create"}
+                    disabled={!canUsePairingActions}
                   />
                 </View>
               </Card>
@@ -149,7 +153,7 @@ export default function PartnerConnection() {
                       });
                     }}
                     loading={actionLoading === "join"}
-                    disabled={!inviteInput.trim()}
+                    disabled={!canUsePairingActions || !inviteInput.trim()}
                   />
                 </View>
               </Card>
