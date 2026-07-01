@@ -20,6 +20,7 @@ jest.mock("expo-router", () => ({
 
 jest.mock("@react-navigation/native", () => ({
   useFocusEffect: jest.fn(),
+  useIsFocused: jest.fn(() => true),
 }));
 
 jest.mock("@/src/features/nudges/api", () => ({
@@ -45,11 +46,16 @@ jest.mock("@/src/features/nudges/useQuickNudges", () => ({
   })),
 }));
 
+jest.mock("@/src/features/nudges/useNudgeRealtime", () => ({
+  useNudgeRealtime: jest.fn(),
+}));
+
 jest.mock("@/src/features/pairing/usePairing", () => ({
   usePairing: jest.fn(() => ({
     pairing: { isPaired: true, partnerName: "Partner", status: "paired" },
     loading: false,
     error: "",
+    refresh: jest.fn(),
   })),
 }));
 
