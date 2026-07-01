@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { Alert, ScrollView, StyleSheet, View } from "react-native";
 
 import { sendNudge } from "@/src/features/nudges/api";
+import { notifyNudgesChanged } from "@/src/features/nudges/events";
 import { SendNudgeForm } from "@/src/features/nudges/SendNudgeForm";
 import { getNudgeSession } from "@/src/features/nudges/session";
 import { appImages } from "@/src/theme/assets";
@@ -78,6 +79,7 @@ export default function CreateNudgeScreen() {
                 emoji,
                 message: nudgeMessage,
               });
+              notifyNudgesChanged();
               router.back();
             } catch (error) {
               Alert.alert(

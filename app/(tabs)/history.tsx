@@ -1,13 +1,15 @@
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { useLocalSearchParams } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, ScrollView, StyleSheet, View } from "react-native";
 
 import { fetchActiveNudges, fetchHistoryNudges } from "@/src/features/nudges/api";
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
+import { subscribeToNudgeChanges } from "@/src/features/nudges/events";
 import { NudgeCard } from "@/src/features/nudges/NudgeCard";
 import { getNudgeSession } from "@/src/features/nudges/session";
 import type { Nudge } from "@/src/features/nudges/types";
+import { useNudgeRealtime } from "@/src/features/nudges/useNudgeRealtime";
 import { AppTopBar } from "@/src/ui/AppTopBar";
 import { Card } from "@/src/ui/Card";
 import { Chip } from "@/src/ui/Chip";
@@ -41,6 +43,7 @@ export default function History() {
   const [activeFilter, setActiveFilter] = useState<Filter>(initialFilter);
   const [history, setHistory] = useState<Nudge[]>([]);
   const [pairId, setPairId] = useState<string | null>(null);
+  const isFocused = useIsFocused();
   const partnerName = "Partner";
 
   useEffect(() => {
@@ -86,11 +89,19 @@ export default function History() {
     loadHistory();
   }, [loadHistory]);
 
+  useEffect(() => {
+    return subscribeToNudgeChanges(() => {
+      loadHistory();
+    });
+  }, [loadHistory]);
+
   useFocusEffect(
     useCallback(() => {
       loadHistory();
     }, [loadHistory])
   );
+
+  useNudgeRealtime(isFocused ? pairId : null, loadHistory);
 
   const filtered = useMemo(() => {
     if (activeFilter === "active") return history.filter((item) => item.status === "active" || item.status === "evening_reminder" || item.status === "final_warning");

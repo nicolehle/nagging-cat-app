@@ -1,4 +1,4 @@
-import { useFocusEffect } from "@react-navigation/native";
+import { useFocusEffect, useIsFocused } from "@react-navigation/native";
 import { Image } from "expo-image";
 import { router } from "expo-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -15,6 +15,7 @@ import {
 import type { NudgeCardModel } from "@/src/features/nudges/cardModel";
 import { toHomeCardModel } from "@/src/features/nudges/cardModel";
 import { CompletedNudgeModal } from "@/src/features/nudges/CompletedNudgeModal";
+import { subscribeToNudgeChanges } from "@/src/features/nudges/events";
 import { getHomeStatusLabel } from "@/src/features/nudges/labels";
 import { NudgeCard } from "@/src/features/nudges/NudgeCard";
 import { QuickNudgePicker } from "@/src/features/nudges/QuickNudgePicker";
@@ -22,6 +23,7 @@ import { getNudgeSession } from "@/src/features/nudges/session";
 import { sortForHome } from "@/src/features/nudges/sort";
 import { deriveStatus } from "@/src/features/nudges/status";
 import type { Nudge } from "@/src/features/nudges/types";
+import { useNudgeRealtime } from "@/src/features/nudges/useNudgeRealtime";
 import { useQuickNudges } from "@/src/features/nudges/useQuickNudges";
 import { appImages } from "@/src/theme/assets";
 import { tokens } from "@/src/theme/tokens";
@@ -43,6 +45,7 @@ export default function Home() {
   const [completedNudge, setCompletedNudge] = useState<NudgeCardModel | null>(null);
   const [quickPickerOpen, setQuickPickerOpen] = useState(false);
   const [sendingQuickId, setSendingQuickId] = useState<string | null>(null);
+  const isFocused = useIsFocused();
   const { quickNudges, reload: reloadQuickNudges } = useQuickNudges();
 
   const loadNudges = useCallback(async (showError = false) => {
@@ -72,12 +75,20 @@ export default function Home() {
     loadNudges();
   }, [loadNudges]);
 
+  useEffect(() => {
+    return subscribeToNudgeChanges(() => {
+      loadNudges();
+    });
+  }, [loadNudges]);
+
   useFocusEffect(
     useCallback(() => {
       loadNudges();
       reloadQuickNudges();
     }, [loadNudges, reloadQuickNudges])
   );
+
+  useNudgeRealtime(isFocused ? pairId : null, loadNudges);
 
   useEffect(() => {
     const timer = setInterval(() => setNudges((prev) => [...prev]), 60 * 1000);

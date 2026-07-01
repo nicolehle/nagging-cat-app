@@ -1,5 +1,6 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { FavoriteEmojiRow } from "@/src/features/nudges/FavoriteEmojiRow";
@@ -35,7 +36,7 @@ export default function Me() {
   const [newQuickNudgeEmoji, setNewQuickNudgeEmoji] = useState("📣");
   const [quickNudgeError, setQuickNudgeError] = useState("");
   const { quickNudges, addQuickNudge, removeQuickNudge } = useQuickNudges();
-  const { pairing, loading, error } = usePairing();
+  const { pairing, loading, error, refresh } = usePairing();
   const {
     name,
     setName,
@@ -50,6 +51,12 @@ export default function Me() {
 
   const connectedName = pairing?.partnerName ?? "Partner";
   const canEditProfile = profileAuthReady && Boolean(profileAuthUserId);
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   const partnerSummary = loading
     ? "Checking your pair..."

@@ -1,5 +1,6 @@
+import { useFocusEffect } from "@react-navigation/native";
 import { ChevronRight, LogOut } from "lucide-react-native";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
 import { usePairing } from "@/src/features/pairing/usePairing";
@@ -23,6 +24,7 @@ export default function PartnerConnection() {
     actionLoading,
     error,
     success,
+    refresh,
     createInvite,
     joinByCode,
     disconnect,
@@ -46,7 +48,13 @@ export default function PartnerConnection() {
       ? `${connectedName} is connected and ready to keep sharing nudges.`
       : isPending
         ? "Your invite is open. Share the code below or wait for them to join."
-        : "Create a code to invite someone or join with a code they sent you.";
+      : "Create a code to invite someone or join with a code they sent you.";
+
+  useFocusEffect(
+    useCallback(() => {
+      refresh();
+    }, [refresh])
+  );
 
   return (
     <Screen style={styles.screen} keyboardAvoiding>
